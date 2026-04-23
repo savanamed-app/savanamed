@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savanamed — Iniciar sesión</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #1a6b4a; --green2: #22855c; --lime: #c8f0d8;
+      --cream: #f7f4ef; --dark: #0f1f17; --gray: #6b7c74;
+      --white: #ffffff; --radius: 14px; --red: #ef4444;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--dark); min-height: 100vh; display: flex; flex-direction: column; }
+
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 5%; background: rgba(247,244,239,0.92);
+      backdrop-filter: blur(12px); border-bottom: 1px solid rgba(26,107,74,0.1);
+    }
+    .logo { font-family: 'Instrument Serif', serif; font-size: 1.55rem; color: var(--green); letter-spacing: -0.5px; text-decoration: none; }
+    .logo span { color: var(--green2); font-style: italic; }
+    .nav-link { color: var(--gray); font-size: .9rem; text-decoration: none; }
+    .nav-link:hover { color: var(--green); }
+
+    .page-wrap {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      padding: 40px 5%;
+    }
+
+    .login-card {
+      background: var(--white); border-radius: 24px;
+      padding: 3rem 2.5rem; width: 100%; max-width: 440px;
+      box-shadow: 0 20px 60px rgba(26,107,74,.08);
+      border: 1px solid rgba(26,107,74,0.08);
+    }
+
+    .login-icon {
+      width: 56px; height: 56px; background: var(--lime);
+      border-radius: 16px; display: flex; align-items: center;
+      justify-content: center; font-size: 1.5rem; margin-bottom: 1.5rem;
+    }
+
+    .login-title { font-family: 'Instrument Serif', serif; font-size: 2rem; letter-spacing: -0.5px; margin-bottom: .4rem; }
+    .login-sub { color: var(--gray); font-size: .9rem; margin-bottom: 2rem; }
+    .login-sub a { color: var(--green); text-decoration: none; font-weight: 500; }
+
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: var(--dark); margin-bottom: .4rem; }
+    input {
+      width: 100%; padding: 12px 14px; border-radius: 10px;
+      border: 1.5px solid #e5e7eb; font-size: .9rem;
+      font-family: 'DM Sans', sans-serif; background: var(--white);
+      transition: border-color .2s; outline: none; color: var(--dark);
+    }
+    input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(26,107,74,0.08); }
+    input.error { border-color: var(--red); }
+
+    .pass-wrap { position: relative; }
+    .pass-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--gray); font-size: .9rem; }
+
+    .forgot { display: block; text-align: right; font-size: .8rem; color: var(--green); text-decoration: none; margin-top: .4rem; }
+    .forgot:hover { text-decoration: underline; }
+
+    .alert { border-radius: 10px; padding: 12px 16px; font-size: .88rem; margin-bottom: 1rem; display: none; }
+    .alert.show { display: block; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+    .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #16a34a; }
+
+    .btn-login {
+      width: 100%; padding: 14px; border-radius: 100px;
+      background: var(--green); color: var(--white); border: none;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      transition: all .2s; font-family: 'DM Sans', sans-serif;
+      margin-top: .5rem;
+    }
+    .btn-login:hover { background: var(--green2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,107,74,.25); }
+    .btn-login:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .divider { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0; }
+    .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e5e7eb; }
+    .divider span { font-size: .78rem; color: var(--gray); white-space: nowrap; }
+
+    .btn-registro {
+      width: 100%; padding: 13px; border-radius: 100px;
+      background: transparent; color: var(--green);
+      border: 1.5px solid var(--green); font-size: .95rem; font-weight: 600;
+      cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif;
+      text-align: center; text-decoration: none; display: block;
+    }
+    .btn-registro:hover { background: var(--lime); }
+
+    /* RESET PASSWORD MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px; display: none;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--white); border-radius: 20px;
+      padding: 2rem; width: 100%; max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    }
+    .modal h3 { font-family: 'Instrument Serif', serif; font-size: 1.4rem; margin-bottom: .4rem; }
+    .modal p { color: var(--gray); font-size: .88rem; margin-bottom: 1.2rem; line-height: 1.6; }
+    .modal-btns { display: flex; gap: .8rem; margin-top: 1.2rem; }
+    .btn-cancel { flex: 1; padding: 11px; border-radius: 100px; border: 1.5px solid #e5e7eb; background: transparent; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .9rem; }
+    .btn-send { flex: 1; padding: 11px; border-radius: 100px; background: var(--green); color: var(--white); border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .9rem; font-weight: 600; }
+    .btn-send:hover { background: var(--green2); }
+
+    .loading-dots { display: inline-block; }
+    .loading-dots::after { content: ''; animation: dots 1.2s infinite; }
+    @keyframes dots { 0%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Sava<span>med</span></a>
+  <a href="registro.html" class="nav-link">¿No tienes cuenta? Regístrate →</a>
+</nav>
+
+<div class="page-wrap">
+  <div class="login-card">
+
+    <div class="login-icon">🔐</div>
+    <h1 class="login-title">Bienvenido de vuelta</h1>
+    <p class="login-sub">¿No tienes cuenta? <a href="registro.html">Regístrate gratis</a></p>
+
+    <div class="alert alert-error" id="alertError"></div>
+    <div class="alert alert-success" id="alertSuccess"></div>
+
+    <form id="loginForm" novalidate>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="tu@email.com" autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <div class="pass-wrap">
+          <input type="password" id="password" placeholder="Tu contraseña" autocomplete="current-password" />
+          <button type="button" class="pass-toggle" id="passToggle">👁</button>
+        </div>
+        <a href="#" class="forgot" id="forgotLink">¿Olvidaste tu contraseña?</a>
+      </div>
+
+      <button type="submit" class="btn-login" id="btnLogin">Entrar a mi panel →</button>
+    </form>
+
+    <div class="divider"><span>¿Eres nuevo en Savanamed?</span></div>
+    <a href="registro.html" class="btn-registro">Crear mi cuenta gratis →</a>
+
+  </div>
+</div>
+
+<!-- RESET PASSWORD MODAL -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <h3>Recuperar contraseña</h3>
+    <p>Escribe tu email y te mandamos un link para crear una nueva contraseña.</p>
+    <div class="alert alert-error" id="resetError" style="display:none;"></div>
+    <div class="alert alert-success" id="resetSuccess" style="display:none;"></div>
+    <input type="email" id="resetEmail" placeholder="tu@email.com" />
+    <div class="modal-btns">
+      <button class="btn-cancel" id="btnCancelReset">Cancelar</button>
+      <button class="btn-send" id="btnSendReset">Enviar link</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyDN0AcvUM056iG2VMJV_Tx74Tx1ZNAbMh0",
+    authDomain: "savanamed-ac0e3.firebaseapp.com",
+    projectId: "savanamed-ac0e3",
+    storageBucket: "savanamed-ac0e3.firebasestorage.app",
+    messagingSenderId: "866793621444",
+    appId: "1:866793621444:web:ce86452fc40bba65a40691"
+  });
+  const auth = getAuth(app);
+
+  // Toggle password
+  document.getElementById('passToggle').addEventListener('click', () => {
+    const input = document.getElementById('password');
+    const btn = document.getElementById('passToggle');
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.textContent = input.type === 'password' ? '👁' : '🙈';
+  });
+
+  // Login form
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('btnLogin');
+    const errEl    = document.getElementById('alertError');
+
+    errEl.classList.remove('show');
+
+    if (!email || !password) {
+      errEl.textContent = 'Completa tu email y contraseña.';
+      errEl.classList.add('show');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = 'Entrando<span class="loading-dots"></span>';
+
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      const s = document.getElementById('alertSuccess');
+      s.textContent = '✅ ¡Bienvenido! Cargando tu panel...';
+      s.classList.add('show');
+      setTimeout(() => { window.location.href = 'panel.html'; }, 1200);
+    } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = 'Entrar a mi panel →';
+      let msg = 'Error al iniciar sesión. Intenta de nuevo.';
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') msg = 'Email o contraseña incorrectos.';
+      if (err.code === 'auth/user-not-found') msg = 'No encontramos una cuenta con ese email.';
+      if (err.code === 'auth/too-many-requests') msg = 'Demasiados intentos. Espera unos minutos.';
+      if (err.code === 'auth/invalid-email') msg = 'El email no es válido.';
+      errEl.textContent = msg;
+      errEl.classList.add('show');
+    }
+  });
+
+  // Forgot password
+  document.getElementById('forgotLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    const emailVal = document.getElementById('email').value.trim();
+    if (emailVal) document.getElementById('resetEmail').value = emailVal;
+    document.getElementById('resetModal').classList.add('show');
+  });
+
+  document.getElementById('btnCancelReset').addEventListener('click', () => {
+    document.getElementById('resetModal').classList.remove('show');
+  });
+
+  document.getElementById('btnSendReset').addEventListener('click', async () => {
+    const email = document.getElementById('resetEmail').value.trim();
+    const errEl = document.getElementById('resetError');
+    const sucEl = document.getElementById('resetSuccess');
+    errEl.style.display = 'none';
+    sucEl.style.display = 'none';
+
+    if (!email) {
+      errEl.textContent = 'Ingresa tu email.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      sucEl.textContent = '✅ Te mandamos el link a tu email. Revisa tu bandeja.';
+      sucEl.style.display = 'block';
+      setTimeout(() => { document.getElementById('resetModal').classList.remove('show'); }, 3000);
+    } catch (err) {
+      errEl.textContent = 'No encontramos una cuenta con ese email.';
+      errEl.style.display = 'block';
+    }
+  });
+
+  // Close modal clicking outside
+  document.getElementById('resetModal').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('resetModal')) {
+      document.getElementById('resetModal').classList.remove('show');
+    }
+  });
+</script>
+
+</body>
+</html>
