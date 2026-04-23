@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agendar cita — Savanamed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #1a6b4a; --green2: #22855c; --lime: #c8f0d8;
+      --cream: #f7f4ef; --dark: #0f1f17; --gray: #6b7c74;
+      --white: #ffffff; --red: #ef4444; --radius: 14px;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--dark); min-height: 100vh; }
+
+    .loading-screen { position: fixed; inset: 0; background: var(--cream); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; gap: 1rem; }
+    .loading-screen.hidden { display: none; }
+    .loading-logo { font-family: 'Instrument Serif', serif; font-size: 2rem; color: var(--green); }
+    .loading-logo span { font-style: italic; color: var(--green2); }
+    .loading-spinner { width: 32px; height: 32px; border: 3px solid var(--lime); border-top-color: var(--green); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-screen { min-height: 100vh; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem; }
+    .error-screen.show { display: flex; }
+    .error-icon { font-size: 3rem; margin-bottom: 1rem; }
+    .error-title { font-family: 'Instrument Serif', serif; font-size: 1.8rem; margin-bottom: .5rem; }
+    .error-sub { color: var(--gray); font-size: .95rem; line-height: 1.6; }
+
+    nav { background: var(--white); border-bottom: 1px solid rgba(26,107,74,0.1); padding: 14px 5%; display: flex; align-items: center; justify-content: space-between; }
+    .nav-brand { font-family: 'Instrument Serif', serif; font-size: 1.2rem; color: var(--green); text-decoration: none; }
+    .nav-brand span { font-style: italic; }
+    .nav-powered { font-size: .72rem; color: var(--gray); }
+    .nav-powered a { color: var(--green); text-decoration: none; font-weight: 500; }
+
+    .page { max-width: 680px; margin: 0 auto; padding: 32px 20px 60px; }
+
+    .doctor-card { background: var(--white); border-radius: 20px; padding: 1.8rem; border: 1px solid rgba(26,107,74,0.08); margin-bottom: 1.5rem; box-shadow: 0 4px 20px rgba(26,107,74,.06); }
+    .doctor-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .doctor-avatar { width: 64px; height: 64px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; flex-shrink: 0; }
+    .doctor-name { font-family: 'Instrument Serif', serif; font-size: 1.5rem; letter-spacing: -0.3px; }
+    .doctor-spec { color: var(--green); font-size: .88rem; font-weight: 600; margin-top: .1rem; }
+    .doctor-info { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: .8rem; }
+    .doctor-info-tag { display: flex; align-items: center; gap: .4rem; font-size: .8rem; color: var(--gray); background: var(--cream); padding: 4px 12px; border-radius: 100px; }
+
+    .steps-indicator { display: flex; align-items: center; gap: .5rem; margin-bottom: 1.5rem; }
+    .step-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 700; background: #e5e7eb; color: var(--gray); transition: all .3s; }
+    .step-dot.active { background: var(--green); color: var(--white); }
+    .step-dot.done { background: var(--lime); color: var(--green); }
+    .step-line { flex: 1; height: 2px; background: #e5e7eb; transition: background .3s; }
+    .step-line.done { background: var(--lime); }
+
+    .booking-section { display: none; }
+    .booking-section.active { display: block; }
+    .section-title { font-family: 'Instrument Serif', serif; font-size: 1.4rem; margin-bottom: .4rem; }
+    .section-sub { color: var(--gray); font-size: .88rem; margin-bottom: 1.2rem; }
+
+    .tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; margin-bottom: 1.5rem; }
+    .tipo-card { background: var(--white); border: 2px solid #e5e7eb; border-radius: var(--radius); padding: 1.2rem; cursor: pointer; transition: all .2s; }
+    .tipo-card:hover { border-color: var(--green); }
+    .tipo-card.selected { border-color: var(--green); background: var(--lime); }
+    .tipo-card.emergency { border-color: #fca5a5; }
+    .tipo-card.emergency.selected { border-color: var(--red); background: #fef2f2; }
+    .tipo-icon { font-size: 1.6rem; margin-bottom: .5rem; }
+    .tipo-name { font-size: .9rem; font-weight: 700; margin-bottom: .2rem; }
+    .tipo-desc { font-size: .75rem; color: var(--gray); line-height: 1.4; }
+    .tipo-card.emergency .tipo-desc { color: #dc2626; }
+
+    .emergency-alert { background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius); padding: 1rem 1.2rem; margin-bottom: 1.2rem; display: none; }
+    .emergency-alert.show { display: block; }
+    .emergency-alert p { font-size: .85rem; color: #dc2626; line-height: 1.6; }
+    .emergency-alert strong { display: block; font-size: .9rem; margin-bottom: .3rem; }
+
+    .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .cal-nav h3 { font-size: 1rem; font-weight: 600; text-transform: capitalize; }
+    .cal-btn { background: none; border: 1.5px solid #e5e7eb; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: all .2s; }
+    .cal-btn:hover { border-color: var(--green); color: var(--green); }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 1.2rem; }
+    .cal-day-name { text-align: center; font-size: .65rem; font-weight: 700; color: var(--gray); text-transform: uppercase; padding: 6px 0; }
+    .cal-day-btn { aspect-ratio: 1; border: none; background: none; border-radius: 8px; font-size: .82rem; cursor: pointer; transition: all .2s; display: flex; align-items: center; justify-content: center; width: 100%; }
+    .cal-day-btn:hover:not(:disabled) { background: var(--lime); color: var(--green); }
+    .cal-day-btn.selected { background: var(--green); color: var(--white); font-weight: 700; }
+    .cal-day-btn.today { border: 2px solid var(--green); font-weight: 700; }
+    .cal-day-btn:disabled { color: #d1d5db; cursor: not-allowed; }
+    .cal-day-btn.other-month { color: #d1d5db; }
+
+    .slots-section { margin-top: 1rem; display: none; }
+    .slots-label { font-size: .78rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: .6rem; }
+    .slots-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+    .slot-btn { padding: 9px 6px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: .8rem; font-weight: 500; cursor: pointer; text-align: center; background: var(--white); transition: all .2s; font-family: 'DM Sans', sans-serif; }
+    .slot-btn:hover { border-color: var(--green); color: var(--green); }
+    .slot-btn.selected { background: var(--green); color: var(--white); border-color: var(--green); }
+    .slot-btn.taken { background: #f5f5f5; color: #d1d5db; cursor: not-allowed; text-decoration: line-through; border-color: #f5f5f5; }
+    .no-slots { text-align: center; padding: 1.5rem; color: var(--gray); font-size: .88rem; background: var(--white); border-radius: var(--radius); border: 1px dashed #e5e7eb; }
+
+    .form-group { margin-bottom: 1rem; }
+    label { display: block; font-size: .82rem; font-weight: 600; color: var(--dark); margin-bottom: .4rem; }
+    label .hint { color: var(--gray); font-weight: 400; font-size: .75rem; display: block; margin-top: .1rem; }
+    input, select, textarea { width: 100%; padding: 12px 14px; border-radius: 10px; border: 1.5px solid #e5e7eb; font-size: .9rem; font-family: 'DM Sans', sans-serif; background: var(--white); transition: border-color .2s; outline: none; color: var(--dark); }
+    input:focus, select:focus, textarea:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(26,107,74,0.08); }
+    input.error { border-color: var(--red); }
+    .error-msg { font-size: .75rem; color: var(--red); margin-top: .3rem; display: none; }
+    .error-msg.show { display: block; }
+
+    .resumen-card { background: var(--white); border-radius: var(--radius); padding: 1.4rem; border: 1px solid rgba(26,107,74,0.1); margin-bottom: 1.2rem; }
+    .resumen-row { display: flex; justify-content: space-between; align-items: flex-start; padding: .6rem 0; border-bottom: 1px solid #f5f5f5; font-size: .88rem; gap: 1rem; }
+    .resumen-row:last-child { border: none; }
+    .resumen-label { color: var(--gray); flex-shrink: 0; }
+    .resumen-value { font-weight: 600; text-align: right; }
+    .resumen-value.green { color: var(--green); }
+
+    .btn-primary { width: 100%; padding: 14px; border-radius: 100px; background: var(--green); color: var(--white); border: none; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all .2s; font-family: 'DM Sans', sans-serif; }
+    .btn-primary:hover { background: var(--green2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,107,74,.25); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-back { background: none; border: none; color: var(--gray); font-size: .88rem; cursor: pointer; font-family: 'DM Sans', sans-serif; padding: 0; margin-bottom: 1rem; display: flex; align-items: center; gap: .3rem; }
+    .btn-back:hover { color: var(--dark); }
+
+    .success-screen { text-align: center; padding: 3rem 1rem; display: none; }
+    .success-screen.show { display: block; }
+    .success-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .success-title { font-family: 'Instrument Serif', serif; font-size: 2rem; margin-bottom: .5rem; }
+    .success-sub { color: var(--gray); font-size: .95rem; line-height: 1.7; margin-bottom: 1.5rem; }
+    .success-detail { background: var(--white); border-radius: var(--radius); padding: 1.2rem; border: 1px solid rgba(26,107,74,0.1); text-align: left; margin-bottom: 1.5rem; }
+    .sd-row { display: flex; gap: .6rem; align-items: center; padding: .4rem 0; font-size: .88rem; }
+    .sd-icon { font-size: 1rem; width: 20px; flex-shrink: 0; }
+
+    .alert { border-radius: 10px; padding: 12px 16px; font-size: .88rem; margin-bottom: 1rem; display: none; }
+    .alert.show { display: block; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; }
+
+    @media (max-width: 480px) {
+      .tipo-grid { grid-template-columns: 1fr; }
+      .slots-grid { grid-template-columns: repeat(3, 1fr); }
+      .page { padding: 20px 16px 40px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="loading-screen" id="loadingScreen">
+  <div class="loading-logo">Sava<span>med</span></div>
+  <div class="loading-spinner"></div>
+</div>
+
+<div class="error-screen" id="errorScreen">
+  <div class="error-icon">🔍</div>
+  <div class="error-title">Doctor no encontrado</div>
+  <div class="error-sub">El link que usaste no existe o fue desactivado.<br>Verifica el link con tu doctor.</div>
+</div>
+
+<nav id="mainNav" style="display:none;">
+  <a href="index.html" class="nav-brand">Sava<span>med</span></a>
+  <div class="nav-powered">Powered by <a href="index.html">Savanamed</a></div>
+</nav>
+
+<div class="page" id="mainPage" style="display:none;">
+
+  <div class="doctor-card">
+    <div class="doctor-header">
+      <div class="doctor-avatar" id="docAvatar">👨‍⚕️</div>
+      <div>
+        <div class="doctor-name" id="docNombre">—</div>
+        <div class="doctor-spec" id="docEspec">—</div>
+      </div>
+    </div>
+    <div class="doctor-info" id="docInfo"></div>
+  </div>
+
+  <div class="steps-indicator">
+    <div class="step-dot active" id="step1dot">1</div>
+    <div class="step-line" id="line1"></div>
+    <div class="step-dot" id="step2dot">2</div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-dot" id="step3dot">3</div>
+    <div class="step-line" id="line3"></div>
+    <div class="step-dot" id="step4dot">4</div>
+  </div>
+
+  <div class="alert alert-error" id="alertError"></div>
+
+  <!-- STEP 1: TIPO -->
+  <div class="booking-section active" id="step1">
+    <div class="section-title">¿Qué tipo de visita necesitas?</div>
+    <div class="section-sub">Elige la opción que mejor describe tu situación.</div>
+    <div class="tipo-grid">
+      <div class="tipo-card" data-tipo="consulta">
+        <div class="tipo-icon">🩺</div>
+        <div class="tipo-name">Consulta general</div>
+        <div class="tipo-desc">Tengo un síntoma o molestia que quiero revisar.</div>
+      </div>
+      <div class="tipo-card" data-tipo="revision">
+        <div class="tipo-icon">✅</div>
+        <div class="tipo-name">Revisión / control</div>
+        <div class="tipo-desc">Chequeo de rutina o seguimiento de tratamiento.</div>
+      </div>
+      <div class="tipo-card" data-tipo="procedimiento">
+        <div class="tipo-icon">🔧</div>
+        <div class="tipo-name">Procedimiento</div>
+        <div class="tipo-desc">Tengo un procedimiento ya coordinado con el doctor.</div>
+      </div>
+      <div class="tipo-card emergency" data-tipo="emergencia">
+        <div class="tipo-icon">🚨</div>
+        <div class="tipo-name">Emergencia</div>
+        <div class="tipo-desc">Necesito atención urgente lo antes posible.</div>
+      </div>
+    </div>
+    <div class="emergency-alert" id="emergencyAlert">
+      <p><strong>⚠️ Si es una emergencia grave llama directamente al doctor</strong>
+      Al marcar emergencia, el doctor recibe una alerta inmediata con prioridad alta. Completa el formulario para coordinar la atención.</p>
+    </div>
+    <button class="btn-primary" id="btnStep1Next" disabled>Continuar →</button>
+  </div>
+
+  <!-- STEP 2: FECHA Y HORA -->
+  <div class="booking-section" id="step2">
+    <button class="btn-back" id="backStep1">← Volver</button>
+    <div class="section-title">Elige fecha y horario</div>
+    <div class="section-sub">Selecciona el día y la hora que mejor te convenga.</div>
+    <div class="cal-nav">
+      <button class="cal-btn" id="calPrev">‹</button>
+      <h3 id="calMonthYear"></h3>
+      <button class="cal-btn" id="calNext">›</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="slots-section" id="slotsSection">
+      <div class="slots-label" id="slotsLabel">Horarios disponibles</div>
+      <div class="slots-grid" id="slotsGrid"></div>
+    </div>
+    <button class="btn-primary" id="btnStep2Next" disabled style="margin-top:1.2rem;">Continuar →</button>
+  </div>
+
+  <!-- STEP 3: DATOS -->
+  <div class="booking-section" id="step3">
+    <button class="btn-back" id="backStep2">← Volver</button>
+    <div class="section-title">Tus datos</div>
+    <div class="section-sub">Para confirmar tu cita y enviarte el recordatorio.</div>
+    <div class="form-group">
+      <label>Nombre completo *</label>
+      <input type="text" id="pacNombre" placeholder="María Pérez" autocomplete="name" />
+      <div class="error-msg" id="pacNombreErr">Ingresa tu nombre completo</div>
+    </div>
+    <div class="form-group">
+      <label>WhatsApp *
+        <span class="hint">Te enviamos confirmación y recordatorio aquí</span>
+      </label>
+      <input type="tel" id="pacWA" placeholder="+58 412 000 0000" autocomplete="tel" />
+      <div class="error-msg" id="pacWAErr">Ingresa tu número de WhatsApp</div>
+    </div>
+    <div class="form-group">
+      <label>Email
+        <span class="hint">Opcional — también enviamos recordatorio por email</span>
+      </label>
+      <input type="email" id="pacEmail" placeholder="tu@email.com" autocomplete="email" />
+    </div>
+    <div class="form-group">
+      <label>Motivo de la consulta
+        <span class="hint">Opcional — ayuda al doctor a prepararse</span>
+      </label>
+      <textarea id="pacMotivo" rows="2" placeholder="Ej: Dolor en muela del juicio desde hace 3 días..."></textarea>
+    </div>
+    <button class="btn-primary" id="btnStep3Next">Ver resumen →</button>
+  </div>
+
+  <!-- STEP 4: CONFIRMAR -->
+  <div class="booking-section" id="step4">
+    <button class="btn-back" id="backStep3">← Volver</button>
+    <div class="section-title">Confirma tu cita</div>
+    <div class="section-sub">Revisa los detalles antes de confirmar.</div>
+    <div class="resumen-card">
+      <div class="resumen-row"><span class="resumen-label">Doctor</span><span class="resumen-value" id="resDoctor">—</span></div>
+      <div class="resumen-row"><span class="resumen-label">Tipo de cita</span><span class="resumen-value" id="resTipo">—</span></div>
+      <div class="resumen-row"><span class="resumen-label">Fecha</span><span class="resumen-value" id="resFecha">—</span></div>
+      <div class="resumen-row"><span class="resumen-label">Hora</span><span class="resumen-value green" id="resHora">—</span></div>
+      <div class="resumen-row"><span class="resumen-label">Paciente</span><span class="resumen-value" id="resPaciente">—</span></div>
+      <div class="resumen-row"><span class="resumen-label">WhatsApp</span><span class="resumen-value" id="resWA">—</span></div>
+    </div>
+    <button class="btn-primary" id="btnConfirmar">✅ Confirmar cita</button>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="success-screen" id="successScreen">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">¡Cita registrada!</div>
+    <div class="success-sub">Tu solicitud fue enviada al doctor.<br>Recibirás una confirmación por WhatsApp en breve.</div>
+    <div class="success-detail" id="successDetail"></div>
+    <button class="btn-primary" onclick="window.location.reload()" style="max-width:300px; margin:0 auto; display:block;">Agendar otra cita</button>
+  </div>
+
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, getDoc, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const app = initializeApp({
+    apiKey: "AIzaSyDN0AcvUM056iG2VMJV_Tx74Tx1ZNAbMh0",
+    authDomain: "savanamed-ac0e3.firebaseapp.com",
+    projectId: "savanamed-ac0e3",
+    storageBucket: "savanamed-ac0e3.firebasestorage.app",
+    messagingSenderId: "866793621444",
+    appId: "1:866793621444:web:ce86452fc40bba65a40691"
+  });
+  const db = getFirestore(app);
+
+  let doctorData = null;
+  let doctorUID  = null;
+  let selectedTipo  = null;
+  let selectedFecha = null;
+  let selectedHora  = null;
+  let calDate = new Date();
+
+  // ── LOAD DOCTOR ──────────────────────────────────────────────────
+  const slug = new URLSearchParams(window.location.search).get('slug');
+
+  async function loadDoctor() {
+    if (!slug) { showError(); return; }
+    try {
+      // Lee perfil público — no expone datos sensibles
+      const perfilSnap = await getDoc(doc(db, 'perfiles', slug));
+      if (!perfilSnap.exists()) { showError(); return; }
+      doctorData = perfilSnap.data();
+      doctorUID  = doctorData.uid;
+      if (!doctorUID) { showError(); return; }
+
+      document.title = `${doctorData.nombre} — Agendar cita`;
+      document.getElementById('docAvatar').textContent = doctorData.emoji || '👨‍⚕️';
+      document.getElementById('docNombre').textContent = doctorData.nombre;
+      document.getElementById('docEspec').textContent  = doctorData.especialidad || '';
+
+      const infoEl = document.getElementById('docInfo');
+      if (doctorData.direccion)       infoEl.innerHTML += `<div class="doctor-info-tag">📍 ${doctorData.direccion}</div>`;
+      if (doctorData.ciudad)          infoEl.innerHTML += `<div class="doctor-info-tag">🏙️ ${doctorData.ciudad}</div>`;
+      if (doctorData.duracionCita)    infoEl.innerHTML += `<div class="doctor-info-tag">⏱ Citas de ${doctorData.duracionCita} min</div>`;
+
+      document.getElementById('loadingScreen').classList.add('hidden');
+      document.getElementById('mainNav').style.display = '';
+      document.getElementById('mainPage').style.display = '';
+      buildCalendar();
+    } catch (err) {
+      console.error(err);
+      showError();
+    }
+  }
+
+  function showError() {
+    document.getElementById('loadingScreen').classList.add('hidden');
+    document.getElementById('errorScreen').classList.add('show');
+  }
+
+  // ── TIPO ──────────────────────────────────────────────────────────
+  document.querySelectorAll('.tipo-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.tipo-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      selectedTipo = card.dataset.tipo;
+      document.getElementById('btnStep1Next').disabled = false;
+      document.getElementById('emergencyAlert').classList.toggle('show', selectedTipo === 'emergencia');
+    });
+  });
+  document.getElementById('btnStep1Next').addEventListener('click', () => goToStep(2));
+
+  // ── CALENDAR ──────────────────────────────────────────────────────
+  function buildCalendar() {
+    const year  = calDate.getFullYear();
+    const month = calDate.getMonth();
+    const today = new Date(); today.setHours(0,0,0,0);
+    const days  = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+    document.getElementById('calMonthYear').textContent =
+      calDate.toLocaleDateString('es-VE', { month:'long', year:'numeric' });
+
+    let html = days.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+    const firstDay    = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const prevDays    = new Date(year, month, 0).getDate();
+
+    for (let i = firstDay - 1; i >= 0; i--) {
+      html += `<button class="cal-day-btn other-month" disabled>${prevDays - i}</button>`;
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date    = new Date(year, month, d);
+      const isPast  = date < today;
+      const isSun   = date.getDay() === 0;
+      const isToday = date.toDateString() === today.toDateString();
+      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isSel   = dateStr === selectedFecha;
+      html += `<button class="cal-day-btn${isToday?' today':''}${isSel?' selected':''}"
+        ${isPast||isSun ? 'disabled' : `data-date="${dateStr}"`}>${d}</button>`;
+    }
+
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = html;
+    grid.querySelectorAll('.cal-day-btn[data-date]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedFecha = btn.dataset.date;
+        selectedHora  = null;
+        document.getElementById('btnStep2Next').disabled = true;
+        buildCalendar();
+        loadSlots(selectedFecha);
+      });
+    });
+  }
+
+  document.getElementById('calPrev').addEventListener('click', () => { const now = new Date(); if (calDate.getFullYear() === now.getFullYear() && calDate.getMonth() === now.getMonth()) return; calDate.setMonth(calDate.getMonth()-1); buildCalendar(); });
+  document.getElementById('calNext').addEventListener('click', () => { calDate.setMonth(calDate.getMonth()+1); buildCalendar(); });
+
+  // ── SLOTS ─────────────────────────────────────────────────────────
+  async function loadSlots(fecha) {
+    const sec   = document.getElementById('slotsSection');
+    const grid  = document.getElementById('slotsGrid');
+    const label = document.getElementById('slotsLabel');
+    sec.style.display = 'block';
+    grid.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--gray);font-size:.85rem;">Cargando horarios...</div>';
+
+    const duracion = parseInt(doctorData.duracionCita) || 30;
+
+    // Get booked slots — handle errors gracefully
+    let booked = [];
+    try {
+      const citasRef  = collection(db, 'doctores', doctorUID, 'citas');
+      const citasSnap = await getDocs(query(citasRef,
+        where('fechaHora', '>=', fecha + 'T00:00'),
+        where('fechaHora', '<=', fecha + 'T23:59')
+      ));
+      booked = citasSnap.docs
+        .filter(d => d.data().estado !== 'cancelada')
+        .map(d => d.data().fechaHora.slice(11,16));
+    } catch(e) {
+      console.warn('No se pudieron cargar citas ocupadas:', e);
+    }
+
+    // Generate slots 8am-6pm
+    const slots = [];
+    for (let h = 8; h < 18; h++) {
+      for (let m = 0; m < 60; m += duracion) {
+        slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
+      }
+    }
+
+    const fechaObj = new Date(fecha + 'T12:00');
+    label.textContent = `Horarios · ${fechaObj.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' })}`;
+
+    grid.innerHTML = slots.map(hora => {
+      const taken = booked.includes(hora);
+      const sel   = hora === selectedHora;
+      return `<button class="slot-btn${taken?' taken':''}${sel?' selected':''}"
+        ${taken ? 'disabled' : `data-hora="${hora}"`}>${hora}</button>`;
+    }).join('');
+
+    grid.querySelectorAll('.slot-btn[data-hora]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedHora = btn.dataset.hora;
+        document.getElementById('btnStep2Next').disabled = false;
+        grid.querySelectorAll('.slot-btn').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+  }
+
+  document.getElementById('btnStep2Next').addEventListener('click', () => goToStep(3));
+  document.getElementById('backStep1').addEventListener('click', () => goToStep(1));
+
+  // ── DATOS PACIENTE ────────────────────────────────────────────────
+  document.getElementById('btnStep3Next').addEventListener('click', () => {
+    const nombre = document.getElementById('pacNombre').value.trim();
+    const wa     = document.getElementById('pacWA').value.trim();
+    let ok = true;
+
+    ['pacNombreErr','pacWAErr'].forEach(id => document.getElementById(id).classList.remove('show'));
+    ['pacNombre','pacWA'].forEach(id => document.getElementById(id).classList.remove('error'));
+
+    if (!nombre) { document.getElementById('pacNombreErr').classList.add('show'); document.getElementById('pacNombre').classList.add('error'); ok = false; }
+    if (!wa)     { document.getElementById('pacWAErr').classList.add('show'); document.getElementById('pacWA').classList.add('error'); ok = false; }
+    if (!ok) return;
+
+    const tipoLabels = { consulta:'🩺 Consulta general', revision:'✅ Revisión / control', procedimiento:'🔧 Procedimiento', emergencia:'🚨 Emergencia' };
+    const fechaObj = new Date(selectedFecha + 'T12:00');
+
+    document.getElementById('resDoctor').textContent  = doctorData.nombre;
+    document.getElementById('resTipo').textContent    = tipoLabels[selectedTipo] || selectedTipo;
+    document.getElementById('resFecha').textContent   = fechaObj.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+    document.getElementById('resHora').textContent    = selectedHora;
+    document.getElementById('resPaciente').textContent = nombre;
+    document.getElementById('resWA').textContent      = wa;
+
+    goToStep(4);
+  });
+  document.getElementById('backStep2').addEventListener('click', () => goToStep(2));
+  document.getElementById('backStep3').addEventListener('click', () => goToStep(3));
+
+  // ── CONFIRMAR ─────────────────────────────────────────────────────
+  document.getElementById('btnConfirmar').addEventListener('click', async () => {
+    const btn = document.getElementById('btnConfirmar');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      await addDoc(collection(db, 'doctores', doctorUID, 'citas'), {
+        pacienteNombre: document.getElementById('pacNombre').value.trim(),
+        pacienteTel:    document.getElementById('pacWA').value.trim(),
+        pacienteEmail:  document.getElementById('pacEmail').value.trim(),
+        tipo:           selectedTipo,
+        fechaHora:      `${selectedFecha}T${selectedHora}`,
+        motivo:         document.getElementById('pacMotivo').value.trim(),
+        estado:         selectedTipo === 'emergencia' ? 'urgente' : 'pendiente',
+        creadoEn:       new Date().toISOString(),
+        origen:         'publico',
+      });
+
+      const fechaObj = new Date(selectedFecha + 'T12:00');
+      document.getElementById('successDetail').innerHTML = `
+        <div class="sd-row"><span class="sd-icon">👨‍⚕️</span><span>${doctorData.nombre}</span></div>
+        <div class="sd-row"><span class="sd-icon">📅</span><span>${fechaObj.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' })} a las ${selectedHora}</span></div>
+        <div class="sd-row"><span class="sd-icon">📱</span><span>Confirmación por WhatsApp: ${document.getElementById('pacWA').value.trim()}</span></div>
+        <div class="sd-row"><span class="sd-icon">🔔</span><span>Recibirás un recordatorio 24h antes de tu cita</span></div>
+      `;
+
+      document.querySelectorAll('.steps-indicator, .doctor-card').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.booking-section').forEach(s => s.classList.remove('active'));
+      document.getElementById('successScreen').classList.add('show');
+
+    } catch (err) {
+      btn.disabled = false;
+      btn.textContent = '✅ Confirmar cita';
+      const errEl = document.getElementById('alertError');
+      errEl.textContent = 'Error al guardar la cita. Intenta de nuevo.';
+      errEl.classList.add('show');
+      console.error(err);
+    }
+  });
+
+  // ── NAVIGATION ────────────────────────────────────────────────────
+  function goToStep(step) {
+    document.querySelectorAll('.booking-section').forEach(s => s.classList.remove('active'));
+    document.getElementById('alertError').classList.remove('show');
+    document.getElementById(`step${step}`).classList.add('active');
+    updateSteps(step);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function updateSteps(current) {
+    for (let i = 1; i <= 4; i++) {
+      const dot  = document.getElementById(`step${i}dot`);
+      const line = document.getElementById(`line${i}`);
+      if (i < current) {
+        dot.className = 'step-dot done'; dot.textContent = '✓';
+        if (line) line.classList.add('done');
+      } else if (i === current) {
+        dot.className = 'step-dot active'; dot.textContent = i;
+      } else {
+        dot.className = 'step-dot'; dot.textContent = i;
+        if (line) line.classList.remove('done');
+      }
+    }
+  }
+
+  loadDoctor();
+</script>
+</body>
+</html>
