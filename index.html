@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savanamed — Agenda médica inteligente</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green:  #1a6b4a; --green2: #22855c; --lime: #c8f0d8;
+      --cream:  #f7f4ef; --dark:   #0f1f17; --gray: #6b7c74;
+      --white:  #ffffff; --radius: 14px; --red: #ef4444;
+      --font-body: 'DM Sans', sans-serif;
+      --font-display: 'Instrument Serif', serif;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); background: var(--cream); color: var(--dark); overflow-x: hidden; }
+
+    /* ── TYPOGRAPHY ── */
+    h1, h2, h3, h4 { font-family: var(--font-display); }
+    p, span, a, li, div, button { font-family: var(--font-body); }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 5%; background: rgba(247,244,239,0.92);
+      backdrop-filter: blur(12px); border-bottom: 1px solid rgba(26,107,74,0.1);
+    }
+    .logo { font-family: var(--font-display); font-size: 1.55rem; color: var(--green); letter-spacing: -0.5px; }
+    .logo span { color: var(--green2); font-style: italic; }
+    nav .nav-links { display: flex; gap: 2rem; align-items: center; }
+    nav .nav-links a { text-decoration: none; color: var(--gray); font-size: .9rem; font-weight: 500; transition: color .2s; }
+    nav .nav-links a:hover { color: var(--green); }
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: 10px 22px; border-radius: 100px; font-size: .9rem; font-weight: 600;
+      cursor: pointer; transition: all .2s; border: none; text-decoration: none;
+    }
+    .btn-primary { background: var(--green); color: var(--white); }
+    .btn-primary:hover { background: var(--green2); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(26,107,74,.25); }
+    .btn-outline { background: transparent; color: var(--green); border: 1.5px solid var(--green); }
+    .btn-outline:hover { background: var(--green); color: var(--white); }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; text-align: center;
+      padding: 120px 5% 80px; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: -200px; right: -200px;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(200,240,216,0.6) 0%, transparent 70%);
+      border-radius: 50%; animation: float 8s ease-in-out infinite;
+    }
+    @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-30px); } }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: var(--lime); color: var(--green); padding: 6px 16px;
+      border-radius: 100px; font-size: .8rem; font-weight: 600;
+      margin-bottom: 1.5rem; animation: fadeUp .6s ease both;
+    }
+    .hero-title-wrap { animation: fadeUp .6s .1s ease both; }
+    h1 { font-size: clamp(2.8rem, 7vw, 5.5rem); line-height: 1.08; letter-spacing: -2px; color: var(--dark); max-width: 820px; }
+    h1 em { color: var(--green); font-style: italic; }
+    .hero-note { font-size: .82rem; color: var(--gray); margin-top: .6rem; font-style: italic; }
+    .hero-note::before { content: '···  '; letter-spacing: 3px; color: var(--green); }
+    .hero-sub { margin-top: 1.5rem; font-size: 1.05rem; color: var(--gray); max-width: 540px; line-height: 1.7; animation: fadeUp .6s .2s ease both; }
+    .hero-cta { display: flex; gap: 1rem; margin-top: 2.5rem; flex-wrap: wrap; justify-content: center; animation: fadeUp .6s .3s ease both; }
+    .hero-devices { display: flex; align-items: center; gap: .5rem; margin-top: 1rem; color: var(--gray); font-size: .82rem; animation: fadeUp .6s .35s ease both; }
+    .hero-devices span { background: var(--lime); color: var(--green); padding: 3px 10px; border-radius: 100px; font-size: .75rem; font-weight: 600; }
+    .hero-stats { display: flex; gap: 3rem; margin-top: 3.5rem; animation: fadeUp .6s .4s ease both; flex-wrap: wrap; justify-content: center; }
+    .stat { text-align: center; }
+    .stat-num { font-family: var(--font-display); font-size: 2.2rem; color: var(--green); }
+    .stat-label { font-size: .8rem; color: var(--gray); margin-top: .2rem; }
+
+    /* ── PARA QUIÉN ── */
+    .para-section { background: var(--white); padding: 60px 5%; }
+    .para-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
+    .para-title { font-family: var(--font-display); font-size: clamp(1.4rem, 2.5vw, 1.8rem); color: var(--dark); margin-bottom: 2rem; }
+    .para-title em { color: var(--green); font-style: italic; }
+    .para-grid { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .para-tag {
+      display: flex; align-items: center; gap: .5rem;
+      background: var(--cream); border: 1px solid rgba(26,107,74,0.15);
+      border-radius: 100px; padding: 8px 18px; font-size: .88rem; font-weight: 500;
+    }
+
+    /* ── GUIÑO ── */
+    .guino-section { background: var(--green); padding: 60px 5%; text-align: center; }
+    .guino-inner { max-width: 700px; margin: 0 auto; }
+    .guino-text { font-family: var(--font-display); font-size: clamp(1.6rem, 3.5vw, 2.4rem); color: var(--white); line-height: 1.3; letter-spacing: -0.5px; }
+    .guino-text em { color: var(--lime); font-style: italic; }
+    .guino-sub { color: rgba(255,255,255,0.6); font-size: .95rem; margin-top: 1rem; }
+
+    /* ── DEMO AGENDAMIENTO ── */
+    .demo-section { background: var(--dark); padding: 80px 5%; }
+    .demo-inner { max-width: 1050px; margin: 0 auto; text-align: center; }
+    .demo-title { font-family: var(--font-display); font-size: clamp(1.8rem, 3vw, 2.5rem); color: var(--white); margin-bottom: .5rem; }
+    .demo-title em { color: var(--lime); font-style: italic; }
+    .demo-sub { color: rgba(255,255,255,0.5); font-size: .95rem; margin-bottom: 3rem; }
+    .demo-flow { display: flex; gap: 2rem; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+
+    .booking-mock { background: var(--white); border-radius: 20px; padding: 1.5rem; width: 310px; text-align: left; box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+    .bm-header { display: flex; align-items: center; gap: .8rem; margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid #f0f0f0; }
+    .bm-avatar { width: 40px; height: 40px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 1.1rem; }
+    .bm-name { font-weight: 600; font-size: .9rem; font-family: var(--font-body); }
+    .bm-spec { color: var(--gray); font-size: .75rem; }
+    .bm-label { font-size: .7rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: .5rem; margin-top: 1rem; }
+    .tipo-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
+    .tipo-btn { padding: 7px 10px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: .75rem; font-weight: 500; cursor: pointer; text-align: center; background: var(--white); }
+    .tipo-btn.active { border-color: var(--green); background: var(--lime); color: var(--green); }
+    .tipo-btn.emergency { border-color: var(--red); color: var(--red); }
+    .week-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: .6rem; }
+    .week-nav span { font-size: .8rem; font-weight: 600; }
+    .week-nav button { background: none; border: none; cursor: pointer; color: var(--green); font-size: 1rem; }
+    .days-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: .8rem; }
+    .day-col { text-align: center; }
+    .day-name { font-size: .6rem; color: var(--gray); margin-bottom: 3px; text-transform: uppercase; }
+    .day-num { width: 28px; height: 28px; border-radius: 50%; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: .75rem; cursor: pointer; transition: all .2s; }
+    .day-num.active { background: var(--green); color: var(--white); }
+    .slots-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+    .slot-btn { padding: 6px; border-radius: 6px; border: 1px solid #e5e7eb; font-size: .72rem; text-align: center; cursor: pointer; background: var(--white); }
+    .slot-btn.active { background: var(--green); color: var(--white); border-color: var(--green); }
+    .slot-btn.taken { background: #f5f5f5; color: #ccc; cursor: not-allowed; text-decoration: line-through; }
+    .bm-confirm { margin-top: 1rem; background: var(--green); color: var(--white); border: none; border-radius: 10px; padding: 10px; width: 100%; font-size: .85rem; font-weight: 600; cursor: pointer; }
+
+    .notif-mock { display: flex; flex-direction: column; gap: .8rem; width: 270px; }
+    .notif-card { background: rgba(255,255,255,0.06); border-radius: 14px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.1); text-align: left; opacity: 0; transform: translateY(8px); animation: msgIn .4s ease forwards; }
+    .notif-card:nth-child(1) { animation-delay: .3s; }
+    .notif-card:nth-child(2) { animation-delay: 1s; }
+    .notif-card:nth-child(3) { animation-delay: 1.8s; }
+    .notif-card:nth-child(4) { animation-delay: 2.6s; }
+    .notif-card.emergency { border-color: rgba(239,68,68,0.4); background: rgba(239,68,68,0.08); }
+    .notif-tag { font-size: .62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+    .notif-tag.wa { color: #25d366; }
+    .notif-tag.email { color: #60a5fa; }
+    .notif-tag.urgent { color: #f87171; }
+    .notif-text { color: rgba(255,255,255,0.75); font-size: .76rem; line-height: 1.5; }
+    @keyframes msgIn { to { opacity: 1; transform: translateY(0); } }
+
+    /* ── IA SECTION ── */
+    .ia-section { padding: 100px 5%; background: var(--cream); }
+    .ia-inner { max-width: 1100px; margin: 0 auto; }
+    .ia-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; margin-top: 3rem; }
+    .antes-despues { display: flex; flex-direction: column; gap: 1rem; }
+    .ad-card { border-radius: var(--radius); padding: 1.5rem; }
+    .ad-card.antes { background: #fef2f2; border: 1px solid #fecaca; }
+    .ad-card.despues { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .ad-label { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: .8rem; }
+    .ad-card.antes .ad-label { color: #dc2626; }
+    .ad-card.despues .ad-label { color: #16a34a; }
+    .ad-row { display: flex; align-items: center; gap: .6rem; font-size: .85rem; margin-bottom: .4rem; }
+    .ad-card.antes .ad-row { color: #991b1b; }
+    .ad-card.despues .ad-row { color: #166534; }
+    .ia-features { display: flex; flex-direction: column; gap: 1.2rem; }
+    .ia-feature { display: flex; align-items: flex-start; gap: 1rem; }
+    .ia-feature-icon { width: 44px; height: 44px; background: var(--lime); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0; }
+    .ia-feature h3 { font-size: .95rem; font-weight: 600; margin-bottom: .2rem; font-family: var(--font-body); }
+    .ia-feature p { font-size: .83rem; color: var(--gray); line-height: 1.6; }
+
+    /* ── PERFIL ── */
+    .perfil-section { padding: 100px 5%; background: var(--white); }
+    .perfil-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+    .perfil-text h2 { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.15; letter-spacing: -1px; margin-bottom: 1rem; }
+    .perfil-text h2 em { color: var(--green); font-style: italic; }
+    .perfil-text p { color: var(--gray); font-size: .92rem; line-height: 1.7; margin-bottom: 1rem; }
+    .link-example { display: inline-flex; align-items: center; gap: .5rem; background: var(--lime); color: var(--green); padding: 8px 16px; border-radius: 100px; font-size: .85rem; font-weight: 600; }
+    .perfil-mockup { background: var(--cream); border-radius: 20px; padding: 1.5rem; border: 1px solid rgba(26,107,74,0.1); box-shadow: 0 20px 60px rgba(26,107,74,.08); }
+    .pm-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; }
+    .pm-avatar { width: 56px; height: 56px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: var(--white); }
+    .pm-name { font-weight: 600; font-size: .95rem; font-family: var(--font-body); }
+    .pm-info { color: var(--gray); font-size: .78rem; line-height: 1.6; }
+    .pm-section-label { font-size: .7rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: .5rem; margin-top: 1rem; }
+    .pm-week-tabs { display: flex; gap: .4rem; margin-bottom: .8rem; flex-wrap: wrap; }
+    .pm-week-tab { padding: 4px 10px; border-radius: 100px; font-size: .72rem; font-weight: 500; border: 1px solid rgba(26,107,74,0.2); color: var(--gray); cursor: pointer; }
+    .pm-week-tab.active { background: var(--green); color: var(--white); border-color: var(--green); }
+    .pm-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4rem; }
+    .pm-slot { background: var(--white); border: 1px solid rgba(26,107,74,0.15); border-radius: 8px; padding: 7px; text-align: center; font-size: .72rem; font-weight: 500; color: var(--green); cursor: pointer; transition: all .2s; }
+    .pm-slot:hover { background: var(--green); color: var(--white); }
+    .pm-slot.taken { background: #f5f5f5; color: #ccc; cursor: not-allowed; text-decoration: line-through; }
+    .pm-url { margin-top: 1rem; text-align: center; font-size: .75rem; color: var(--gray); }
+    .pm-url strong { color: var(--green); }
+
+    /* ── PAGOS ── */
+    .pagos-section { padding: 100px 5%; background: var(--cream); }
+    .pagos-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; }
+    .pagos-mock { background: var(--white); border-radius: 20px; padding: 1.5rem; box-shadow: 0 20px 60px rgba(26,107,74,.1); border: 1px solid rgba(26,107,74,0.1); }
+    .pagos-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; padding-bottom: 1rem; border-bottom: 1px solid #f0f0f0; }
+    .pagos-header span { font-weight: 600; font-size: .9rem; }
+    .pagos-total { font-family: var(--font-display); font-size: 1.4rem; color: var(--green); }
+    .pago-row { display: flex; justify-content: space-between; align-items: center; padding: .7rem 0; border-bottom: 1px solid #f9f9f9; }
+    .pago-row:last-child { border: none; }
+    .pago-info { display: flex; flex-direction: column; gap: .1rem; }
+    .pago-name { font-size: .85rem; font-weight: 500; }
+    .pago-method { font-size: .72rem; color: var(--gray); }
+    .pago-status { display: flex; flex-direction: column; align-items: flex-end; gap: .2rem; }
+    .pago-amount { font-size: .85rem; font-weight: 600; color: var(--green); }
+    .pago-badge { font-size: .65rem; font-weight: 600; padding: 2px 8px; border-radius: 100px; }
+    .pago-badge.paid { background: #dcfce7; color: #16a34a; }
+        .pago-badge.pending { background: #fef9c3; color: #ca8a04; }
+    .metodos-grid { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: 1rem; }
+    .metodo-tag { font-size: .72rem; font-weight: 600; padding: 4px 12px; border-radius: 100px; background: var(--cream); color: var(--gray); border: 1px solid rgba(26,107,74,0.1); }
+
+    /* ── DASHBOARD ── */
+    .dash-section { padding: 100px 5%; background: var(--white); }
+    .dash-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: start; }
+    .dash-mock { background: var(--dark); border-radius: 20px; padding: 1.5rem; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+    .dash-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+    .dash-top strong { color: var(--lime); font-size: .85rem; font-family: var(--font-body); }
+    .live-badge { display: flex; align-items: center; gap: .3rem; font-size: .7rem; color: #4ade80; }
+    .live-dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+    .dash-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; margin-bottom: 1rem; }
+    .dash-card { background: rgba(255,255,255,0.05); border-radius: 10px; padding: .8rem; text-align: center; }
+    .dash-card .dv { font-family: var(--font-display); font-size: 1.4rem; color: var(--white); }
+    .dash-card .dv.g { color: var(--lime); }
+    .dash-card .dv.r { color: #f87171; }
+    .dash-card .dl { color: rgba(255,255,255,0.4); font-size: .65rem; margin-top: .2rem; }
+    .dash-list { display: flex; flex-direction: column; gap: .4rem; }
+    .dash-row { display: flex; justify-content: space-between; align-items: center; padding: .5rem .6rem; border-radius: 8px; background: rgba(255,255,255,0.03); }
+    .dash-row span { color: rgba(255,255,255,0.65); font-size: .75rem; }
+    .dash-badge { padding: 2px 8px; border-radius: 100px; font-size: .65rem; font-weight: 600; }
+    .dash-badge.conf { background: var(--lime); color: var(--green); }
+    .dash-badge.pend { background: rgba(255,200,0,0.15); color: #ffd700; }
+    .dash-badge.urg { background: rgba(239,68,68,0.2); color: #f87171; }
+    .dash-badge.rev { background: rgba(96,165,250,0.2); color: #60a5fa; }
+
+    /* ── GOOGLE CALENDAR ── */
+    .gcal-section { padding: 80px 5%; background: var(--cream); }
+    .gcal-inner { max-width: 800px; margin: 0 auto; text-align: center; }
+    .gcal-title { font-family: var(--font-display); font-size: clamp(1.6rem, 3vw, 2.2rem); margin-bottom: 1rem; }
+    .gcal-title em { color: var(--green); font-style: italic; }
+    .gcal-sub { color: var(--gray); font-size: .95rem; line-height: 1.7; max-width: 550px; margin: 0 auto 2rem; }
+    .gcal-flow { display: flex; align-items: center; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+    .gcal-box { background: var(--white); border-radius: var(--radius); padding: 1rem 1.5rem; font-size: .85rem; font-weight: 500; border: 1px solid rgba(26,107,74,0.1); text-align: center; }
+    .gcal-box .gcal-icon { font-size: 1.5rem; margin-bottom: .3rem; }
+    .gcal-arrow { color: var(--green); font-size: 1.2rem; font-weight: 700; }
+
+    /* ── TESTIMONIOS ── */
+    .testimonios-section { padding: 100px 5%; background: var(--white); }
+    .testimonios-inner { max-width: 1100px; margin: 0 auto; }
+    .testimonios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .testimonio { background: var(--cream); border-radius: var(--radius); padding: 1.8rem; border: 1px solid rgba(26,107,74,0.08); }
+    .testimonio-text { font-size: .92rem; color: var(--dark); line-height: 1.7; margin-bottom: 1.2rem; font-style: italic; }
+    .testimonio-text::before { content: '"'; font-family: var(--font-display); font-size: 2rem; color: var(--lime); line-height: 0; vertical-align: -0.5rem; margin-right: .2rem; }
+    .testimonio-author { display: flex; align-items: center; gap: .8rem; }
+    .testimonio-avatar { width: 40px; height: 40px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--white); font-size: 1rem; }
+    .testimonio-name { font-weight: 600; font-size: .88rem; }
+    .testimonio-spec { font-size: .75rem; color: var(--gray); }
+    .stars { color: #f59e0b; font-size: .8rem; margin-bottom: .8rem; }
+
+    /* ── COMO FUNCIONA ── */
+    .section { padding: 100px 5%; max-width: 1100px; margin: 0 auto; }
+    .section-tag { font-size: .78rem; font-weight: 600; color: var(--green); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 1rem; }
+    .section-title { font-family: var(--font-display); font-size: clamp(2rem, 4vw, 3rem); line-height: 1.15; letter-spacing: -1px; max-width: 600px; }
+    .section-title em { color: var(--green); font-style: italic; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1.5rem; margin-top: 3rem; }
+    .step { background: var(--white); border-radius: var(--radius); padding: 2rem; border: 1px solid rgba(26,107,74,0.1); transition: transform .2s, box-shadow .2s; position: relative; overflow: hidden; }
+    .step::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--green), var(--lime)); }
+    .step:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(26,107,74,.12); }
+    .step-num { font-family: var(--font-display); font-size: 3rem; color: var(--lime); line-height: 1; margin-bottom: .5rem; }
+    .step h3 { font-size: 1rem; font-weight: 600; margin-bottom: .5rem; font-family: var(--font-body); }
+    .step p { font-size: .88rem; color: var(--gray); line-height: 1.6; }
+
+    /* ── BENEFICIOS 3 CATEGORÍAS ── */
+    .beneficios-section { padding: 100px 5%; background: var(--cream); }
+    .beneficios-inner { max-width: 1100px; margin: 0 auto; }
+    .beneficios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin-top: 3rem; }
+    .beneficio-cat { background: var(--white); border-radius: 20px; padding: 2rem; border: 1px solid rgba(26,107,74,0.08); }
+    .beneficio-cat-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 1.2rem; display: flex; align-items: center; gap: .6rem; font-family: var(--font-body); }
+    .beneficio-list { display: flex; flex-direction: column; gap: .7rem; }
+    .beneficio-item { display: flex; align-items: flex-start; gap: .6rem; font-size: .85rem; color: var(--gray); line-height: 1.5; }
+    .beneficio-item::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; margin-top: .1rem; }
+
+    /* ── PRICING ── */
+    .pricing-bg { background: var(--dark); padding: 100px 5%; }
+    .pricing-inner { max-width: 1100px; margin: 0 auto; }
+    .pricing-bg .section-tag { color: var(--lime); }
+    .pricing-bg .section-title { color: var(--white); }
+    .pricing-bg .section-title em { color: var(--lime); }
+    .pricing-card { background: rgba(255,255,255,0.05); border: 1px solid rgba(200,240,216,0.2); border-radius: 20px; padding: 3rem; max-width: 500px; margin: 3rem auto 0; text-align: center; }
+    .price { font-family: var(--font-display); font-size: 4rem; color: var(--white); line-height: 1; }
+    .price span { font-size: 1.5rem; vertical-align: super; color: var(--lime); }
+    .price-sub { color: rgba(255,255,255,0.5); font-size: .9rem; margin-top: .5rem; }
+    .price-sub strong { color: var(--lime); }
+    .price-example { background: rgba(200,240,216,0.08); border: 1px solid rgba(200,240,216,0.15); border-radius: 10px; padding: 1rem; margin-top: 1.5rem; color: rgba(255,255,255,0.55); font-size: .82rem; line-height: 1.7; }
+    .price-example strong { color: var(--lime); }
+
+    /* ── CTA FINAL ── */
+    .cta-section { padding: 100px 5%; text-align: center; background: var(--cream); }
+    .cta-section h2 { font-family: var(--font-display); font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -1px; max-width: 700px; margin: 0 auto 1rem; line-height: 1.15; }
+    .cta-section h2 em { color: var(--green); font-style: italic; }
+    .cta-section p { color: var(--gray); font-size: 1rem; margin-bottom: 2rem; max-width: 480px; margin-left: auto; margin-right: auto; }
+
+    footer { background: var(--dark); color: rgba(255,255,255,0.4); text-align: center; padding: 2rem 5%; font-size: .85rem; }
+    footer strong { color: var(--lime); }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 768px) {
+      .perfil-inner, .pagos-inner, .dash-inner, .ia-grid { grid-template-columns: 1fr; }
+      nav .nav-links { display: none; }
+      .hero-cta { flex-direction: column; align-items: center; }
+      .hero-stats { gap: 1.5rem; }
+      .demo-flow { flex-direction: column; align-items: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">Sava<span>med</span></div>
+  <div class="nav-links">
+    <a href="#como-funciona">Cómo funciona</a>
+    <a href="#precios">Precios</a>
+    <a href="#demo-section">Demo</a>
+  </div>
+  <a href="registro.html" class="btn btn-primary">Agendar un demo</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">Para doctores y especialistas en Venezuela 🇻🇪</div>
+  <div class="hero-title-wrap">
+    <h1>Tu consulta,<br><em>organizada.</em></h1>
+    <div class="hero-note">y por favor, bota el cuaderno 📓</div>
+  </div>
+  <p class="hero-sub">Agenda citas, gestiona tu base de datos de pacientes y envía recordatorios automáticos por WhatsApp y email.</p>
+  <div class="hero-cta">
+    <a href="registro.html" class="btn btn-primary">Agendar un demo →</a>
+    <a href="#demo" class="btn btn-outline">Ver cómo funciona</a>
+  </div>
+  <div class="hero-devices">
+    Disponible en <span>📱 Celular</span> y <span>💻 PC</span>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">$0.40</div><div class="stat-label">por cita agendada</div></div>
+    <div class="stat"><div class="stat-num">5 min</div><div class="stat-label">para configurar</div></div>
+    <div class="stat"><div class="stat-num">0</div><div class="stat-label">papeles necesarios</div></div>
+  </div>
+</section>
+
+<!-- PARA QUIÉN -->
+<div class="para-section">
+  <div class="para-inner">
+    <h2 class="para-title">Para el especialista que trabaja duro<br>y merece <em>herramientas mejores</em></h2>
+    <div class="para-grid">
+      <div class="para-tag">🦷 Odontólogos</div>
+      <div class="para-tag">👁️ Oftalmólogos</div>
+      <div class="para-tag">🦴 Traumatólogos</div>
+      <div class="para-tag">🧠 Psicólogos</div>
+      <div class="para-tag">🐾 Veterinarios</div>
+      <div class="para-tag">👨‍⚕️ Médicos generales</div>
+      <div class="para-tag">❤️ Cardiólogos</div>
+      <div class="para-tag">🏥 Consultorios particulares</div>
+    </div>
+  </div>
+</div>
+
+<!-- GUIÑO -->
+<div class="guino-section">
+  <div class="guino-inner">
+    <p class="guino-text">¿Cobras <em>$50 la consulta?</em><br>Nosotros te cobramos <em>$0.40.</em><br>Tú haz las cuentas. 😄</p>
+    <p class="guino-sub">Cobro a fin de mes. Sin pagos por adelantado.</p>
+  </div>
+</div>
+
+<!-- DEMO AGENDAMIENTO -->
+<div id="demo" class="demo-section">
+  <div class="demo-inner">
+    <h2 class="demo-title">Así agenda<br><em>tu paciente</em></h2>
+    <p class="demo-sub">En segundos, desde su celular. Sin llamadas, sin WhatsApps de ida y vuelta.</p>
+    <div class="demo-flow">
+      <div class="booking-mock">
+        <div class="bm-header">
+          <div class="bm-avatar">👨‍⚕️</div>
+          <div>
+            <div class="bm-name">Dr. Carlos González</div>
+            <div class="bm-spec">Médico General · Caracas</div>
+          </div>
+        </div>
+        <div class="bm-label">Tipo de visita</div>
+        <div class="tipo-grid">
+          <div class="tipo-btn active">🩺 Consulta</div>
+          <div class="tipo-btn">✅ Revisión</div>
+          <div class="tipo-btn">🔧 Procedimiento</div>
+          <div class="tipo-btn emergency">🚨 Emergencia</div>
+        </div>
+        <div class="bm-label">Selecciona tu semana</div>
+        <div class="week-nav">
+          <button>‹</button>
+          <span>28 Apr — 3 May</span>
+          <button>›</button>
+        </div>
+        <div class="days-row">
+          <div class="day-col"><div class="day-name">L</div><div class="day-num">28</div></div>
+          <div class="day-col"><div class="day-name">M</div><div class="day-num active">29</div></div>
+          <div class="day-col"><div class="day-name">X</div><div class="day-num">30</div></div>
+          <div class="day-col"><div class="day-name">J</div><div class="day-num">1</div></div>
+          <div class="day-col"><div class="day-name">V</div><div class="day-num">2</div></div>
+          <div class="day-col"><div class="day-name">S</div><div class="day-num">3</div></div>
+          <div class="day-col"><div class="day-name">D</div><div class="day-num" style="opacity:.3;">4</div></div>
+        </div>
+        <div class="bm-label">Horarios · Mar 29</div>
+        <div class="slots-grid">
+          <div class="slot-btn taken">8:00am</div>
+          <div class="slot-btn">8:30am</div>
+          <div class="slot-btn active">9:00am</div>
+          <div class="slot-btn taken">9:30am</div>
+          <div class="slot-btn">10:00am</div>
+          <div class="slot-btn">10:30am</div>
+        </div>
+        <button class="bm-confirm">Confirmar cita →</button>
+      </div>
+      <div>
+        <p style="color:rgba(255,255,255,0.4); font-size:.8rem; margin-bottom:1rem; text-align:left;">Notificaciones automáticas 👇</p>
+        <div class="notif-mock">
+          <div class="notif-card">
+            <div class="notif-tag wa">📱 WhatsApp → Paciente</div>
+            <div class="notif-text">✅ Cita confirmada con Dr. González · Mar 29 · 9:00am · Consulta.</div>
+          </div>
+          <div class="notif-card">
+            <div class="notif-tag wa">📱 WhatsApp → Doctor</div>
+            <div class="notif-text">🆕 Nueva cita: María Pérez · Mar 29 · 9:00am · Consulta general.</div>
+          </div>
+          <div class="notif-card">
+            <div class="notif-tag email">✉️ Email → Paciente · Día anterior</div>
+            <div class="notif-text">Recuerda tu cita mañana a las 9:00am con el Dr. González.</div>
+          </div>
+          <div class="notif-card emergency">
+            <div class="notif-tag urgent">🚨 Emergencia → Doctor</div>
+            <div class="notif-text">⚠️ URGENTE: Pedro Ruiz necesita atención inmediata.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IA SECTION -->
+<div class="ia-section">
+  <div class="ia-inner">
+    <div class="section-tag">Inteligencia Artificial</div>
+    <h2 class="section-title">Tu asistente<br><em>más inteligente.</em></h2>
+    <div class="ia-grid">
+      <div class="antes-despues">
+        <div class="ad-card antes">
+          <div class="ad-label">❌ Antes</div>
+          <div class="ad-row">📄 Historias en papel acumuladas</div>
+          <div class="ad-row">🔍 Buscar paciente = 10 minutos</div>
+          <div class="ad-row">📝 Letra ilegible, datos incompletos</div>
+          <div class="ad-row">🗄️ Archivadas en una gaveta</div>
+        </div>
+        <div class="ad-card despues">
+          <div class="ad-label">✅ Después</div>
+          <div class="ad-row">📸 Toma foto → IA extrae todo</div>
+          <div class="ad-row">⚡ Buscar paciente = 2 segundos</div>
+          <div class="ad-row">📱 Accesible desde WhatsApp</div>
+          <div class="ad-row">☁️ Guardado en la nube para siempre</div>
+        </div>
+      </div>
+      <div class="ia-features">
+        <div class="ia-feature">
+          <div class="ia-feature-icon">📸</div>
+          <div>
+            <h3>Digitaliza con una foto</h3>
+            <p>Toma foto de cualquier historia clínica en papel. La IA extrae nombre, diagnóstico, alergias y medicamentos automáticamente.</p>
+          </div>
+        </div>
+        <div class="ia-feature">
+          <div class="ia-feature-icon">🤖</div>
+          <div>
+            <h3>Bot que conoce a tus pacientes</h3>
+            <p>Pregúntale a tu bot de WhatsApp cualquier cosa: historial, citas, alergias. Responde al instante como si fuera tu asistente.</p>
+          </div>
+        </div>
+        <div class="ia-feature">
+          <div class="ia-feature-icon">🔔</div>
+          <div>
+            <h3>Alertas inteligentes</h3>
+            <p>La IA detecta pacientes sin visita hace meses, slots vacíos y patrones de tu agenda para avisarte antes de que pierdas ingresos.</p>
+          </div>
+        </div>
+        <div class="ia-feature">
+          <div class="ia-feature-icon">📋</div>
+          <div>
+            <h3>Notas clínicas automáticas</h3>
+            <p>Escribe en lenguaje natural y la IA genera la nota clínica formal lista para guardar o imprimir.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PERFIL -->
+<div class="perfil-section">
+  <div class="perfil-inner">
+    <div class="perfil-text">
+      <div class="section-tag">Tu perfil</div>
+      <h2>Tu página,<br><em>tu marca.</em></h2>
+      <p>Cada doctor recibe su propio link. Tus pacientes ven tu nombre, especialidad, dirección y horarios disponibles — sin ver Savanamed por ningún lado.</p>
+      <div class="link-example">🔗 savanamed.net/dra-martinez</div>
+    </div>
+    <div class="perfil-mockup">
+      <div class="pm-header">
+        <div class="pm-avatar">👩‍⚕️</div>
+        <div>
+          <div class="pm-name">Dra. Laura Martínez</div>
+          <div class="pm-info">🦷 Odontóloga<br>📍 Av. Francisco de Miranda, Caracas<br>⏱ Slots de 30 min</div>
+        </div>
+      </div>
+      <div class="pm-section-label">Semana</div>
+      <div class="pm-week-tabs">
+        <div class="pm-week-tab active">28 Abr</div>
+        <div class="pm-week-tab">5 May</div>
+        <div class="pm-week-tab">12 May</div>
+        <div class="pm-week-tab">19 May</div>
+      </div>
+      <div class="pm-section-label">Horarios disponibles</div>
+      <div class="pm-slots">
+        <div class="pm-slot">Lun · 9am</div>
+        <div class="pm-slot taken">Lun · 9:30</div>
+        <div class="pm-slot">Lun · 10am</div>
+        <div class="pm-slot taken">Mar · 9am</div>
+        <div class="pm-slot">Mar · 10am</div>
+        <div class="pm-slot">Mar · 2pm</div>
+        <div class="pm-slot">Mié · 9am</div>
+        <div class="pm-slot taken">Mié · 10am</div>
+        <div class="pm-slot">Mié · 11am</div>
+      </div>
+      <div class="pm-url">savanamed.net/<strong>dra-martinez</strong></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGOS -->
+<div class="pagos-section">
+  <div class="pagos-inner">
+    <div>
+      <div class="section-tag">Registro de pagos</div>
+      <h2 class="section-title">¿Ya te<br><em>pagaron?</em></h2>
+      <p style="color:var(--gray); font-size:.92rem; line-height:1.7; margin-top:1rem;">Registra cómo te pagó cada paciente — Zelle, Pago Móvil, Binance, PayPal o efectivo. El sistema lleva la cuenta de quién pagó y quién no.</p>
+      <p style="color:var(--gray); font-size:.92rem; line-height:1.7; margin-top:1rem;">Tú cobras como siempre. Savanamed solo lleva el registro por ti.</p>
+      <div class="metodos-grid">
+        <div class="metodo-tag">💚 Zelle</div>
+        <div class="metodo-tag">📱 Pago Móvil</div>
+        <div class="metodo-tag">🟡 Binance</div>
+        <div class="metodo-tag">🔵 PayPal</div>
+        <div class="metodo-tag">💵 Efectivo</div>
+      </div>
+    </div>
+    <div class="pagos-mock">
+      <div class="pagos-header">
+        <span>Pagos · Abril 2026</span>
+        <div class="pagos-total">$620 cobrado</div>
+      </div>
+      <div class="pago-row">
+        <div class="pago-info">
+          <div class="pago-name">María Pérez</div>
+          <div class="pago-method">💚 Zelle · 28 Abr</div>
+        </div>
+        <div class="pago-status">
+          <div class="pago-amount">$50</div>
+          <div class="pago-badge paid">Pagado</div>
+        </div>
+      </div>
+      <div class="pago-row">
+        <div class="pago-info">
+          <div class="pago-name">Carlos Ruiz</div>
+          <div class="pago-method">🟡 Binance · 27 Abr</div>
+        </div>
+        <div class="pago-status">
+          <div class="pago-amount">$40</div>
+          <div class="pago-badge paid">Pagado</div>
+        </div>
+      </div>
+      <div class="pago-row">
+        <div class="pago-info">
+          <div class="pago-name">Pedro García</div>
+          <div class="pago-method">📱 Pago Móvil</div>
+        </div>
+        <div class="pago-status">
+          <div class="pago-amount">$35</div>
+          <div class="pago-badge pending">Pendiente</div>
+        </div>
+      </div>
+      <div class="pago-row">
+        <div class="pago-info">
+          <div class="pago-name">Ana López</div>
+          <div class="pago-method">💵 Efectivo · 26 Abr</div>
+        </div>
+        <div class="pago-status">
+          <div class="pago-amount">$60</div>
+          <div class="pago-badge paid">Pagado</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dash-section">
+  <div class="dash-inner">
+    <div class="dash-mock">
+      <div class="dash-top">
+        <strong>Mi panel · Abril 2026</strong>
+        <div class="live-badge"><div class="live-dot"></div> Tiempo real</div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-card"><div class="dv g">$620</div><div class="dl">Cobrado</div></div>
+        <div class="dash-card"><div class="dv">31</div><div class="dl">Citas</div></div>
+        <div class="dash-card"><div class="dv">8</div><div class="dl">Nuevos</div></div>
+        <div class="dash-card"><div class="dv r">2</div><div class="dl">Emergencias</div></div>
+        <div class="dash-card"><div class="dv r">3</div><div class="dl">Canceladas</div></div>
+        <div class="dash-card"><div class="dv">5</div><div class="dl">Hoy</div></div>
+      </div>
+      <div class="dash-list">
+        <div class="dash-row"><span>María Pérez · 9:00am</span><span class="dash-badge conf">Consulta</span></div>
+        <div class="dash-row"><span>Carlos Ruiz · 10:30am</span><span class="dash-badge rev">Revisión</span></div>
+        <div class="dash-row"><span>Pedro García · 11:00am</span><span class="dash-badge urg">🚨 Urgente</span></div>
+        <div class="dash-row"><span>Ana López · 2:00pm</span><span class="dash-badge pend">Pendiente</span></div>
+      </div>
+    </div>
+    <div>
+      <div class="section-tag">Dashboard</div>
+      <h2 class="section-title">Todo en<br><em>tiempo real.</em></h2>
+      <p style="color:var(--gray); font-size:.92rem; line-height:1.7; margin-top:1rem;">Citas del día, ingresos del mes, pacientes nuevos, emergencias y cancelaciones — todo actualizado al instante.</p>
+      <p style="color:var(--gray); font-size:.92rem; line-height:1.7; margin-top:1rem;">Configura tus precios y el sistema calcula tus ingresos automáticamente. También sincronizado con Google Calendar.</p>
+    </div>
+  </div>
+</div>
+
+<!-- GOOGLE CALENDAR -->
+<div class="gcal-section">
+  <div class="gcal-inner">
+    <h2 class="gcal-title">Sincronizado con<br><em>Google Calendar</em></h2>
+    <p class="gcal-sub">Las citas de Savanamed aparecen automáticamente en tu Google Calendar. Y si bloqueas tiempo ahí, los slots se cierran solos en tu perfil.</p>
+    <div class="gcal-flow">
+      <div class="gcal-box"><div class="gcal-icon">👤</div>Paciente agenda</div>
+      <div class="gcal-arrow">→</div>
+      <div class="gcal-box"><div class="gcal-icon">⚡</div>Savanamed</div>
+      <div class="gcal-arrow">→</div>
+      <div class="gcal-box"><div class="gcal-icon">📅</div>Google Calendar</div>
+      <div class="gcal-arrow">→</div>
+      <div class="gcal-box"><div class="gcal-icon">📱</div>WhatsApp al doctor</div>
+    </div>
+  </div>
+</div>
+
+<!-- TESTIMONIOS -->
+<div class="testimonios-section">
+  <div class="testimonios-inner">
+    <div class="section-tag">Lo que dicen</div>
+    <h2 class="section-title">Doctores que<br><em>botaron el cuaderno.</em></h2>
+    <div class="testimonios-grid">
+      <div class="testimonio">
+        <div class="stars">★★★★★</div>
+        <div class="testimonio-text">Antes perdía citas porque no anotaba bien. Ahora todo me llega al WhatsApp y mis pacientes me confirman solos. Me ahorré horas a la semana.</div>
+        <div class="testimonio-author">
+          <div class="testimonio-avatar">👨‍⚕️</div>
+          <div>
+            <div class="testimonio-name">Dr. Ramón Torres</div>
+            <div class="testimonio-spec">Traumatólogo · Caracas</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonio">
+        <div class="stars">★★★★★</div>
+        <div class="testimonio-text">Lo que más me gustó fue digitalizar mis historias clínicas con foto. Tenía 400 pacientes en papel y en un fin de semana los pasé todos al sistema.</div>
+        <div class="testimonio-author">
+          <div class="testimonio-avatar">👩‍⚕️</div>
+          <div>
+            <div class="testimonio-name">Dra. Carmen Salazar</div>
+            <div class="testimonio-spec">Odontóloga · Valencia</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonio">
+        <div class="stars">★★★★★</div>
+        <div class="testimonio-text">Trabajo en dos clínicas distintas y llevaba todo por WhatsApp. Con Savanamed tengo todo centralizado y sé exactamente cuánto cobré cada mes.</div>
+        <div class="testimonio-author">
+          <div class="testimonio-avatar">👁️</div>
+          <div>
+            <div class="testimonio-name">Dr. Luis Mendoza</div>
+            <div class="testimonio-spec">Oftalmólogo · Maracaibo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- COMO FUNCIONA -->
+<div id="como-funciona" style="background: var(--cream); padding: 1px 0;">
+  <div class="section">
+    <div class="section-tag">Proceso</div>
+    <h2 class="section-title">Listo en<br><em>5 minutos.</em></h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Agenda un demo</h3>
+        <p>Hablamos 15 minutos. Te mostramos cómo funciona y configuramos tu perfil juntos.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>Crea tu perfil</h3>
+        <p>Nombre, especialidad, dirección y horarios. En 5 minutos tienes tu link listo para compartir.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Comparte tu link</h3>
+        <p><strong>savanamed.net/tu-nombre</strong> — ponlo en tu WhatsApp, Instagram o tarjeta de presentación.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <h3>Todo funciona solo</h3>
+        <p>Citas, recordatorios, cancelaciones y pagos registrados. Tú solo apareces a atender.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BENEFICIOS 3 CATEGORÍAS -->
+<div class="beneficios-section">
+  <div class="beneficios-inner">
+    <div class="section-tag">Todo incluido</div>
+    <h2 class="section-title">Una sola plataforma,<br><em>todo lo que necesitas.</em></h2>
+    <div class="beneficios-grid">
+      <div class="beneficio-cat">
+        <div class="beneficio-cat-title">📅 Gestión</div>
+        <div class="beneficio-list">
+          <div class="beneficio-item">Agenda en tiempo real con calendario visual</div>
+          <div class="beneficio-item">Perfil público personalizado con tu marca</div>
+          <div class="beneficio-item">Base de datos completa de pacientes</div>
+          <div class="beneficio-item">Registro de pagos por método</div>
+          <div class="beneficio-item">Canal de emergencias prioritario</div>
+          <div class="beneficio-item">Sincronización con Google Calendar</div>
+        </div>
+      </div>
+      <div class="beneficio-cat">
+        <div class="beneficio-cat-title">📲 Comunicación</div>
+        <div class="beneficio-list">
+          <div class="beneficio-item">Confirmación inmediata al agendar</div>
+          <div class="beneficio-item">Recordatorio 24h antes al paciente</div>
+          <div class="beneficio-item">Recordatorio 2h antes al paciente</div>
+          <div class="beneficio-item">Aviso inmediato si el doctor cancela</div>
+          <div class="beneficio-item">Resumen diario del doctor cada mañana</div>
+          <div class="beneficio-item">Todo por WhatsApp y Email</div>
+        </div>
+      </div>
+      <div class="beneficio-cat">
+        <div class="beneficio-cat-title">🤖 Inteligencia</div>
+        <div class="beneficio-list">
+          <div class="beneficio-item">Digitalización de historias con foto + IA</div>
+          <div class="beneficio-item">Bot de WhatsApp con tu personalidad</div>
+          <div class="beneficio-item">Alertas inteligentes de pacientes inactivos</div>
+          <div class="beneficio-item">Notas clínicas generadas automáticamente</div>
+          <div class="beneficio-item">Dashboard con ingresos en tiempo real</div>
+          <div class="beneficio-item">Predictor de inasistencias</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PRECIOS -->
+<div id="precios" class="pricing-bg">
+  <div class="pricing-inner">
+    <div class="section-tag">Precio</div>
+    <h2 class="section-title">Simple, justo<br>y <em>sin sorpresas.</em></h2>
+    <div class="pricing-card">
+      <div class="price"><span>$</span>0.40</div>
+      <div class="price-sub">por cita agendada · <strong>cobro a fin de mes</strong></div>
+      <p style="color:rgba(255,255,255,0.5); font-size:.85rem; margin-top:.8rem;">Todo incluido. Sin planes, sin niveles, sin letra pequeña.</p>
+      <div class="price-example" style="margin-top:1.5rem;">
+        💡 <strong>20 citas = $8</strong> · <strong>30 citas = $12</strong> · <strong>40 citas = $16</strong><br>
+        Pagas al final del mes. Sin pagos por adelantado.
+      </div>
+      <a href="registro.html" class="btn btn-primary" style="width:100%; justify-content:center; padding:14px; margin-top:1.5rem;">
+        Agendar un demo →
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- CTA FINAL -->
+<section class="cta-section">
+  <h2>Tus pacientes y tu consulta<br>merecen ser <em>más TOP.</em></h2>
+  <p>Únete a los especialistas venezolanos que ya dejaron el cuaderno atrás.</p>
+  <a href="registro.html" class="btn btn-primary" style="font-size:1rem; padding:14px 32px;">
+    Agendar un demo →
+  </a>
+</section>
+
+<footer>
+  <strong>Savanamed</strong> · Agenda médica inteligente para Venezuela 🇻🇪<br>
+  <span style="margin-top:.5rem; display:block;">juany@savanamed.net</span>
+</footer>
+
+</body>
+</html>
