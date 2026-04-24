@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/:slug((?!index|registro|login|panel|agendar|404).*)",
+      "destination": "/agendar.html?slug=:slug"
+    }
+  ]
+}
