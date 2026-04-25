@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savanamed — Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #1a6b4a; --green2: #22855c; --lime: #c8f0d8;
+      --cream: #f7f4ef; --dark: #0f1f17; --gray: #6b7c74;
+      --white: #ffffff; --red: #ef4444; --yellow: #f59e0b;
+      --blue: #3b82f6; --radius: 14px; --sidebar: 220px;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--dark); min-height: 100vh; display: flex; }
+
+    /* AUTH SCREEN */
+    .auth-screen { position: fixed; inset: 0; background: var(--dark); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .auth-screen.hidden { display: none; }
+    .auth-box { background: rgba(255,255,255,0.05); border: 1px solid rgba(200,240,216,0.15); border-radius: 20px; padding: 2.5rem; width: 100%; max-width: 380px; text-align: center; }
+    .auth-logo { font-family: 'Instrument Serif', serif; font-size: 1.8rem; color: var(--white); margin-bottom: .3rem; }
+    .auth-logo span { color: var(--lime); font-style: italic; }
+    .auth-sub { color: rgba(255,255,255,0.4); font-size: .85rem; margin-bottom: 2rem; }
+    .auth-error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); border-radius: 8px; padding: 10px; font-size: .82rem; color: #f87171; margin-bottom: 1rem; display: none; }
+    .auth-error.show { display: block; }
+
+    /* SIDEBAR */
+    .sidebar { width: var(--sidebar); background: var(--dark); height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; z-index: 100; }
+    .sidebar-logo { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .sidebar-logo .logo-main { font-family: 'Instrument Serif', serif; font-size: 1.3rem; color: var(--white); }
+    .sidebar-logo .logo-main span { color: var(--lime); font-style: italic; }
+    .sidebar-logo .logo-sub { font-size: .7rem; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 1.5px; margin-top: .2rem; }
+    .sidebar-nav { padding: 10px; flex: 1; overflow-y: auto; }
+    .nav-label { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.25); padding: 10px 10px 4px; }
+    .nav-item { display: flex; align-items: center; gap: .7rem; padding: 9px 10px; border-radius: 10px; cursor: pointer; color: rgba(255,255,255,0.55); font-size: .84rem; font-weight: 500; transition: all .15s; margin-bottom: 2px; border: none; background: none; width: 100%; text-align: left; font-family: 'DM Sans', sans-serif; }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--white); }
+    .nav-item.active { background: var(--green); color: var(--white); }
+    .nav-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+    .nav-badge { margin-left: auto; background: var(--red); color: var(--white); font-size: .62rem; font-weight: 700; padding: 2px 6px; border-radius: 100px; min-width: 18px; text-align: center; }
+    .sidebar-bottom { padding: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .btn-logout-admin { width: 100%; padding: 9px; border-radius: 10px; background: transparent; border: none; color: rgba(255,255,255,0.35); font-size: .8rem; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: color .2s; }
+    .btn-logout-admin:hover { color: var(--red); }
+
+    /* MAIN */
+    .main { margin-left: var(--sidebar); flex: 1; min-height: 100vh; }
+    .topbar { background: var(--white); border-bottom: 1px solid rgba(26,107,74,0.08); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+    .topbar-title { font-family: 'Instrument Serif', serif; font-size: 1.4rem; letter-spacing: -0.3px; }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .sync-badge { display: flex; align-items: center; gap: .4rem; font-size: .75rem; color: #16a34a; font-weight: 500; background: #f0fdf4; padding: 4px 10px; border-radius: 100px; }
+    .sync-dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .topbar-date { font-size: .8rem; color: var(--gray); }
+
+    .content { padding: 24px 28px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* STATS */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--white); border-radius: var(--radius); padding: 1.2rem 1.4rem; border: 1px solid rgba(26,107,74,0.08); transition: box-shadow .2s; }
+    .stat-card:hover { box-shadow: 0 4px 20px rgba(26,107,74,.08); }
+    .sc-icon { font-size: 1.3rem; margin-bottom: .4rem; }
+    .sc-label { font-size: .7rem; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: .4rem; }
+    .sc-value { font-family: 'Instrument Serif', serif; font-size: 1.9rem; color: var(--dark); line-height: 1; }
+    .sc-value.green { color: var(--green); }
+    .sc-value.red { color: var(--red); }
+    .sc-value.yellow { color: var(--yellow); }
+    .sc-value.blue { color: var(--blue); }
+    .sc-sub { font-size: .72rem; color: var(--gray); margin-top: .3rem; }
+
+    /* CARDS */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-bottom: 1.5rem; }
+    .card { background: var(--white); border-radius: var(--radius); padding: 1.4rem; border: 1px solid rgba(26,107,74,0.08); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .card-title { font-size: .9rem; font-weight: 700; }
+
+    /* TABLE */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-size: .7rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: .8px; padding: .6rem 1rem; text-align: left; border-bottom: 1px solid #f0f0f0; white-space: nowrap; }
+    td { padding: .7rem 1rem; font-size: .84rem; border-bottom: 1px solid #f9f9f9; vertical-align: middle; }
+    tr:last-child td { border: none; }
+    tr:hover td { background: #fafafa; }
+    .td-name { font-weight: 600; }
+    .td-sub { font-size: .72rem; color: var(--gray); }
+
+    /* BADGES */
+    .badge { padding: 3px 10px; border-radius: 100px; font-size: .68rem; font-weight: 700; white-space: nowrap; }
+    .badge-active { background: #dcfce7; color: #16a34a; }
+    .badge-moroso { background: #fef9c3; color: #ca8a04; }
+    .badge-suspended { background: #fef2f2; color: var(--red); }
+    .badge-new { background: #dbeafe; color: #2563eb; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: .4rem; padding: 8px 16px; border-radius: 100px; font-size: .82rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .2s; border: none; }
+    .btn-primary { background: var(--green); color: var(--white); }
+    .btn-primary:hover { background: var(--green2); }
+    .btn-tbl { background: none; border: none; cursor: pointer; font-size: .78rem; font-weight: 600; font-family: 'DM Sans', sans-serif; padding: 3px 8px; border-radius: 6px; transition: background .15s; }
+    .btn-tbl.green { color: var(--green); }
+    .btn-tbl.green:hover { background: var(--lime); }
+    .btn-tbl.red { color: var(--red); }
+    .btn-tbl.red:hover { background: #fef2f2; }
+    .btn-tbl.yellow { color: var(--yellow); }
+    .btn-tbl.yellow:hover { background: #fef9c3; }
+    .btn-tbl.blue { color: var(--blue); }
+    .btn-tbl.blue:hover { background: #dbeafe; }
+
+    /* SEARCH */
+    .search-bar { display: flex; gap: .8rem; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap input { padding-left: 34px; width: 100%; padding-top: 10px; padding-bottom: 10px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: .84rem; font-family: 'DM Sans', sans-serif; outline: none; }
+    .search-wrap input:focus { border-color: var(--green); }
+    .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray); font-size: .85rem; pointer-events: none; }
+    .filter-select { padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-family: 'DM Sans', sans-serif; font-size: .84rem; outline: none; background: var(--white); }
+
+    /* ALERTA ROW */
+    .alerta-row { display: flex; align-items: flex-start; gap: .8rem; padding: .8rem 0; border-bottom: 1px solid #f5f5f5; }
+    .alerta-row:last-child { border: none; }
+    .alerta-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: .1rem; }
+    .alerta-title { font-size: .85rem; font-weight: 600; margin-bottom: .1rem; }
+    .alerta-sub { font-size: .75rem; color: var(--gray); }
+    .alerta-time { font-size: .72rem; color: var(--gray); margin-left: auto; flex-shrink: 0; }
+
+    /* CHART */
+    .chart-wrap { height: 200px; display: flex; align-items: flex-end; gap: .5rem; padding: 1rem 0; }
+    .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .3rem; height: 100%; justify-content: flex-end; }
+    .chart-bar { width: 100%; background: var(--lime); border-radius: 4px 4px 0 0; transition: height .5s ease; min-height: 4px; position: relative; }
+    .chart-bar:hover { background: var(--green); }
+    .chart-bar .chart-tooltip { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: var(--dark); color: var(--white); padding: 3px 8px; border-radius: 6px; font-size: .7rem; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .2s; margin-bottom: 4px; }
+    .chart-bar:hover .chart-tooltip { opacity: 1; }
+    .chart-label { font-size: .65rem; color: var(--gray); text-align: center; }
+
+    /* MODAL PAGO */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+    .modal-overlay.show { display: flex; }
+    .modal { background: var(--white); border-radius: 20px; padding: 2rem; width: 100%; max-width: 460px; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+    .modal h3 { font-family: 'Instrument Serif', serif; font-size: 1.4rem; margin-bottom: 1.2rem; }
+    .modal-btns { display: flex; gap: .8rem; margin-top: 1.2rem; }
+    .btn-cancel-modal { flex: 1; padding: 11px; border-radius: 100px; border: 1.5px solid #e5e7eb; background: transparent; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .9rem; }
+    .btn-save-modal { flex: 1; padding: 11px; border-radius: 100px; background: var(--green); color: var(--white); border: none; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: .9rem; font-weight: 600; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; font-size: .8rem; font-weight: 600; margin-bottom: .35rem; }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: .88rem; font-family: 'DM Sans', sans-serif; outline: none; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--green); }
+
+    /* DOCTOR DETAIL */
+    .doctor-detail-header { display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px solid #f0f0f0; }
+    .doctor-detail-avatar { width: 64px; height: 64px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; flex-shrink: 0; overflow: hidden; }
+    .doctor-detail-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* EMPTY */
+    .empty { text-align: center; padding: 2rem; color: var(--gray); }
+    .empty-icon { font-size: 2rem; margin-bottom: .5rem; }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 24px; right: 24px; background: var(--dark); color: var(--white); padding: 12px 20px; border-radius: 12px; font-size: .85rem; font-weight: 500; z-index: 9999; transform: translateY(100px); opacity: 0; transition: all .3s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { background: var(--green); }
+    .toast.error { background: var(--red); }
+
+    input, select { padding: 10px 12px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: .88rem; font-family: 'DM Sans', sans-serif; outline: none; background: var(--white); }
+    input:focus, select:focus { border-color: var(--green); }
+  </style>
+</head>
+<body>
+
+<!-- AUTH SCREEN -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-box">
+    <div class="auth-logo">Sava<span>med</span></div>
+    <div class="auth-sub">Panel de administración</div>
+    <div class="auth-error" id="authError">Contraseña incorrecta.</div>
+    <div class="form-group" style="margin-bottom:1rem;">
+      <input type="password" id="adminPass" placeholder="Contraseña de administrador"
+        style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:white;font-size:.9rem;outline:none;"
+        onkeydown="if(event.key==='Enter')checkAdminPass()" />
+    </div>
+    <button onclick="checkAdminPass()"
+      style="width:100%;padding:12px;border-radius:100px;background:var(--green);color:white;border:none;font-size:.9rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">
+      Entrar →
+    </button>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar" style="display:none;">
+  <div class="sidebar-logo">
+    <div class="logo-main">Sava<span>med</span></div>
+    <div class="logo-sub">Super Admin</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-label">Overview</div>
+    <button class="nav-item active" data-section="dashboard"><span class="nav-icon">📊</span> Dashboard</button>
+    <button class="nav-item" data-section="alertas"><span class="nav-icon">🔔</span> Alertas <span class="nav-badge" id="badgeAlertas" style="display:none;">0</span></button>
+    <div class="nav-label">Gestión</div>
+    <button class="nav-item" data-section="doctores"><span class="nav-icon">👨‍⚕️</span> Doctores</button>
+    <button class="nav-item" data-section="facturacion"><span class="nav-icon">💰</span> Facturación</button>
+    <button class="nav-item" data-section="citas"><span class="nav-icon">📅</span> Todas las citas</button>
+    <div class="nav-label">Análisis</div>
+    <button class="nav-item" data-section="metricas"><span class="nav-icon">📈</span> Métricas</button>
+  </nav>
+  <div class="sidebar-bottom">
+    <button class="btn-logout-admin" id="btnLogout">Cerrar sesión</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main" id="mainContent" style="display:none;">
+  <div class="topbar">
+    <div class="topbar-title" id="topbarTitle">Dashboard</div>
+    <div class="topbar-right">
+      <div class="sync-badge"><div class="sync-dot"></div> En vivo</div>
+      <div class="topbar-date" id="topbarDate"></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="section active" id="sec-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="sc-icon">👨‍⚕️</div>
+          <div class="sc-label">Doctores activos</div>
+          <div class="sc-value blue" id="statDoctores">—</div>
+          <div class="sc-sub" id="statDoctoresSub">cargando...</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon">📅</div>
+          <div class="sc-label">Citas este mes</div>
+          <div class="sc-value" id="statCitasMes">—</div>
+          <div class="sc-sub">en toda la plataforma</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon">💰</div>
+          <div class="sc-label">Por cobrar este mes</div>
+          <div class="sc-value green" id="statPorCobrar">—</div>
+          <div class="sc-sub">$0.40 × citas del mes</div>
+        </div>
+        <div class="stat-card">
+          <div class="sc-icon">⚠️</div>
+          <div class="sc-label">Doctores morosos</div>
+          <div class="sc-value red" id="statMorosos">—</div>
+          <div class="sc-sub">sin pagar este mes</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <!-- Nuevos registros -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🆕 Registros recientes</div>
+            <button class="btn-tbl green" onclick="goTo('doctores')">Ver todos →</button>
+          </div>
+          <div id="nuevosRegistrosList">
+            <div class="empty"><div class="empty-icon">👥</div><p>Cargando...</p></div>
+          </div>
+        </div>
+
+        <!-- Doctores por cobrar -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">💳 Pendientes de pago</div>
+            <button class="btn-tbl green" onclick="goTo('facturacion')">Ver todos →</button>
+          </div>
+          <div id="pendientesPagoList">
+            <div class="empty"><div class="empty-icon">💸</div><p>Cargando...</p></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gráfica crecimiento -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">📈 Citas por mes</div>
+        </div>
+        <div class="chart-wrap" id="chartWrap"></div>
+      </div>
+    </div>
+
+    <!-- ALERTAS -->
+    <div class="section" id="sec-alertas">
+      <div class="card">
+        <div class="card-header"><div class="card-title">🔔 Alertas del sistema</div></div>
+        <div id="alertasList">
+          <div class="empty"><div class="empty-icon">✅</div><p>Sin alertas pendientes</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DOCTORES -->
+    <div class="section" id="sec-doctores">
+      <div class="search-bar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="docSearch" placeholder="Buscar doctor..." oninput="filterDoctores()" />
+        </div>
+        <select class="filter-select" id="docFiltroEstado" onchange="filterDoctores()">
+          <option value="">Todos</option>
+          <option value="activo">Activos</option>
+          <option value="moroso">Morosos</option>
+          <option value="suspendido">Suspendidos</option>
+        </select>
+        <select class="filter-select" id="docFiltroEsp" onchange="filterDoctores()">
+          <option value="">Todas las especialidades</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Doctor</th>
+                <th>Especialidad</th>
+                <th>Ciudad</th>
+                <th>Link</th>
+                <th>Citas mes</th>
+                <th>Debe</th>
+                <th>Estado</th>
+                <th>Registro</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="doctoresTableBody">
+              <tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--gray);">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- FACTURACIÓN -->
+    <div class="section" id="sec-facturacion">
+      <div class="stats-grid" style="margin-bottom:1.2rem;">
+        <div class="stat-card"><div class="sc-label">Total por cobrar</div><div class="sc-value green" id="facTotal">$0</div><div class="sc-sub">este mes</div></div>
+        <div class="stat-card"><div class="sc-label">Ya cobrado</div><div class="sc-value blue" id="facCobrado">$0</div><div class="sc-sub">este mes</div></div>
+        <div class="stat-card"><div class="sc-label">Pendiente</div><div class="sc-value yellow" id="facPendiente">$0</div><div class="sc-sub">este mes</div></div>
+        <div class="stat-card"><div class="sc-label">Doctores morosos</div><div class="sc-value red" id="facMorosos">0</div><div class="sc-sub">sin pagar</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Facturación del mes</div>
+          <div style="font-size:.82rem;color:var(--gray);" id="facMesLabel"></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Doctor</th>
+                <th>Slug</th>
+                <th>Citas del mes</th>
+                <th>Monto ($0.40×)</th>
+                <th>Estado pago</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="facTableBody">
+              <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray);">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TODAS LAS CITAS -->
+    <div class="section" id="sec-citas">
+      <div class="search-bar">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="citasAdminSearch" placeholder="Buscar paciente o doctor..." oninput="filterCitasAdmin()" />
+        </div>
+        <select class="filter-select" id="citasAdminFiltro" onchange="filterCitasAdmin()">
+          <option value="">Todos los estados</option>
+          <option value="confirmada">Confirmada</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="cancelada">Cancelada</option>
+          <option value="urgente">Urgente</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Paciente</th><th>Doctor</th><th>Fecha</th><th>Tipo</th><th>Estado</th></tr>
+            </thead>
+            <tbody id="citasAdminBody">
+              <tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--gray);">Cargando...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- MÉTRICAS -->
+    <div class="section" id="sec-metricas">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="sc-label">Ingreso promedio/doctor</div><div class="sc-value green" id="metPromedio">—</div><div class="sc-sub">este mes</div></div>
+        <div class="stat-card"><div class="sc-label">Doctor más activo</div><div class="sc-value" id="metTopDoctor" style="font-size:1rem;">—</div><div class="sc-sub" id="metTopSub">—</div></div>
+        <div class="stat-card"><div class="sc-label">Especialidad top</div><div class="sc-value" id="metTopEsp" style="font-size:1rem;">—</div><div class="sc-sub">más doctores</div></div>
+        <div class="stat-card"><div class="sc-label">Crecimiento mes</div><div class="sc-value blue" id="metCrecimiento">—</div><div class="sc-sub">vs mes anterior</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><div class="card-title">🏙️ Doctores por ciudad</div></div>
+          <div id="ciudadesChart"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">🩺 Doctores por especialidad</div></div>
+          <div id="especialidadesChart"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<!-- MODAL REGISTRAR COBRO -->
+<div class="modal-overlay" id="modalCobro">
+  <div class="modal">
+    <h3>Registrar cobro</h3>
+    <input type="hidden" id="cobroDocUid" />
+    <div class="form-group">
+      <label>Doctor</label>
+      <input type="text" id="cobroDocNombre" readonly style="background:#f9f9f9;" />
+    </div>
+    <div class="form-group">
+      <label>Monto recibido ($)</label>
+      <input type="number" id="cobroMonto" placeholder="0.00" step="0.01" />
+    </div>
+    <div class="form-group">
+      <label>Método de pago</label>
+      <select id="cobroMetodo">
+        <option value="zelle">💚 Zelle</option>
+        <option value="binance">🟡 Binance</option>
+        <option value="pagomovil">📱 Pago Móvil</option>
+        <option value="paypal">🔵 PayPal</option>
+        <option value="efectivo">💵 Efectivo</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Nota (opcional)</label>
+      <input type="text" id="cobroNota" placeholder="Ej: Transferencia recibida" />
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel-modal" onclick="closeModal('modalCobro')">Cancelar</button>
+      <button class="btn-save-modal" id="btnSaveCobro">Confirmar cobro</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getFirestore, collection, getDocs, doc, getDoc, updateDoc, addDoc, query, orderBy, where } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ── ADMIN PASSWORD CHECK ─────────────────────────────────────────
+  const ADMIN_PASS = 'Chancho16.';
+
+  window.checkAdminPass = () => {
+    const pass = document.getElementById('adminPass').value;
+    if (pass === ADMIN_PASS) {
+      sessionStorage.setItem('savanamed_admin', 'true');
+      document.getElementById('authScreen').classList.add('hidden');
+      document.getElementById('sidebar').style.display = '';
+      document.getElementById('mainContent').style.display = '';
+      document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' });
+      loadAll();
+    } else {
+      document.getElementById('authError').classList.add('show');
+      document.getElementById('adminPass').value = '';
+    }
+  };
+
+  // Check if already authenticated this session
+  if (sessionStorage.getItem('savanamed_admin') === 'true') {
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('sidebar').style.display = '';
+    document.getElementById('mainContent').style.display = '';
+    document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' });
+  }
+
+  const app = initializeApp({
+    apiKey: "AIzaSyDN0AcvUM056iG2VMJV_Tx74Tx1ZNAbMh0",
+    authDomain: "savanamed-ac0e3.firebaseapp.com",
+    projectId: "savanamed-ac0e3",
+    storageBucket: "savanamed-ac0e3.firebasestorage.app",
+    messagingSenderId: "866793621444",
+    appId: "1:866793621444:web:ce86452fc40bba65a40691"
+  });
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  let allDoctores = [];
+  let allCitasAdmin = [];
+
+  // ── LOAD ON AUTH ──────────────────────────────────────────────────
+  if (sessionStorage.getItem('savanamed_admin') === 'true') {
+    loadAll();
+  }
+
+  // ── LOAD ALL DATA ─────────────────────────────────────────────────
+  async function loadAll() {
+    const doctoresSnap = await getDocs(collection(db, 'doctores'));
+    allDoctores = [];
+
+    for (const d of doctoresSnap.docs) {
+      const data = { uid: d.id, ...d.data() };
+      // Get citas count for this month
+      const mes = new Date().getMonth();
+      const anio = new Date().getFullYear();
+      try {
+        const citasSnap = await getDocs(collection(db, 'doctores', d.id, 'citas'));
+        const citas = citasSnap.docs.map(c => c.data());
+        data.citasMes = citas.filter(c => {
+          const fecha = new Date(c.fechaHora);
+          return fecha.getMonth() === mes && fecha.getFullYear() === anio && c.estado !== 'cancelada';
+        }).length;
+        data.citasTotal = citas.length;
+        data.debe = parseFloat((data.citasMes * 0.40).toFixed(2));
+        // Check payment status
+        const pagosSnap = await getDocs(collection(db, 'doctores', d.id, 'pagosAdmin'));
+        const pagosMes = pagosSnap.docs.map(p => p.data()).filter(p => {
+          const fecha = new Date(p.fecha);
+          return fecha.getMonth() === mes && fecha.getFullYear() === anio;
+        });
+        data.pagado = pagosMes.filter(p => p.tipo === 'cobro').reduce((s, p) => s + (p.monto || 0), 0);
+        data.estadoPago = data.pagado >= data.debe ? 'pagado' : data.debe > 0 ? 'pendiente' : 'ok';
+
+        // All citas for admin view
+        citas.forEach(c => allCitasAdmin.push({ ...c, doctorNombre: data.nombreCompleto || data.nombre, doctorSlug: data.slug }));
+      } catch(e) {
+        data.citasMes = 0; data.debe = 0; data.pagado = 0; data.estadoPago = 'ok';
+      }
+      allDoctores.push(data);
+    }
+
+    allDoctores.sort((a,b) => new Date(b.creadoEn) - new Date(a.creadoEn));
+    allCitasAdmin.sort((a,b) => new Date(b.fechaHora) - new Date(a.fechaHora));
+
+    updateDashboard();
+    renderDoctoresTable(allDoctores);
+    renderFacturacion(allDoctores);
+    renderCitasAdmin(allCitasAdmin);
+    renderMetricas();
+    renderAlertas();
+    renderChart();
+    populateEspFilter();
+  }
+
+  // ── DASHBOARD ─────────────────────────────────────────────────────
+  function updateDashboard() {
+    const mes = new Date().getMonth();
+    const activos    = allDoctores.filter(d => d.estadoPago !== 'suspendido').length;
+    const citasMes   = allDoctores.reduce((s,d) => s + (d.citasMes||0), 0);
+    const porCobrar  = allDoctores.reduce((s,d) => s + (d.debe||0), 0);
+    const morosos    = allDoctores.filter(d => d.estadoPago === 'pendiente' && d.debe > 0).length;
+    const nuevos7    = allDoctores.filter(d => {
+      const dias = (Date.now() - new Date(d.creadoEn)) / 86400000;
+      return dias <= 7;
+    }).length;
+
+    document.getElementById('statDoctores').textContent    = activos;
+    document.getElementById('statDoctoresSub').textContent = `+${nuevos7} esta semana`;
+    document.getElementById('statCitasMes').textContent    = citasMes;
+    document.getElementById('statPorCobrar').textContent   = `$${porCobrar.toFixed(2)}`;
+    document.getElementById('statMorosos').textContent     = morosos;
+
+    if (morosos > 0) { document.getElementById('badgeAlertas').style.display='inline'; document.getElementById('badgeAlertas').textContent=morosos; }
+
+    // Nuevos registros
+    const nuevosEl = document.getElementById('nuevosRegistrosList');
+    const nuevos = allDoctores.slice(0, 5);
+    if (!nuevos.length) { nuevosEl.innerHTML = '<div class="empty"><p>Sin registros aún</p></div>'; }
+    else {
+      nuevosEl.innerHTML = nuevos.map(d => `
+        <div class="alerta-row">
+          <div class="alerta-icon">${d.especialidadEmoji||'👨‍⚕️'}</div>
+          <div>
+            <div class="alerta-title">${d.nombreCompleto||d.nombre}</div>
+            <div class="alerta-sub">${d.especialidad||'—'} · ${d.ciudad||'—'} · <a href="https://savanamed.net/${d.slug}" target="_blank" style="color:var(--green);">/${d.slug}</a></div>
+          </div>
+          <div class="alerta-time">${fmtDate(d.creadoEn)}</div>
+        </div>`).join('');
+    }
+
+    // Pendientes de pago
+    const pendEl = document.getElementById('pendientesPagoList');
+    const pend = allDoctores.filter(d => d.estadoPago === 'pendiente' && d.debe > 0).slice(0,5);
+    if (!pend.length) { pendEl.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><p>Todo al día</p></div>'; }
+    else {
+      pendEl.innerHTML = pend.map(d => `
+        <div class="alerta-row">
+          <div class="alerta-icon">💳</div>
+          <div>
+            <div class="alerta-title">${d.nombreCompleto||d.nombre}</div>
+            <div class="alerta-sub">${d.citasMes} citas · debe $${d.debe.toFixed(2)}</div>
+          </div>
+          <button class="btn-tbl green" onclick="abrirCobro('${d.uid}','${d.nombreCompleto||d.nombre}',${d.debe})">Cobrar</button>
+        </div>`).join('');
+    }
+
+    // Facturación stats
+    const cobrado = allDoctores.reduce((s,d) => s + (d.pagado||0), 0);
+    document.getElementById('facTotal').textContent    = `$${porCobrar.toFixed(2)}`;
+    document.getElementById('facCobrado').textContent  = `$${cobrado.toFixed(2)}`;
+    document.getElementById('facPendiente').textContent = `$${(porCobrar - cobrado).toFixed(2)}`;
+    document.getElementById('facMorosos').textContent  = morosos;
+    document.getElementById('facMesLabel').textContent = new Date().toLocaleDateString('es-VE', { month:'long', year:'numeric' });
+  }
+
+  // ── DOCTORES TABLE ────────────────────────────────────────────────
+  function renderDoctoresTable(docs) {
+    const tbody = document.getElementById('doctoresTableBody');
+    if (!docs.length) { tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--gray);">No hay doctores registrados</td></tr>`; return; }
+    tbody.innerHTML = docs.map(d => `
+      <tr>
+        <td>
+          <div class="td-name">${d.nombreCompleto||d.nombre}</div>
+          <div class="td-sub">${d.email}</div>
+        </td>
+        <td>${d.especialidadEmoji||''} ${d.especialidad||'—'}</td>
+        <td>${d.ciudad||'—'}</td>
+        <td><a href="https://savanamed.net/${d.slug}" target="_blank" style="color:var(--green);font-size:.78rem;">/${d.slug}</a></td>
+        <td style="font-weight:600;">${d.citasMes||0}</td>
+        <td style="font-weight:700;color:${d.debe>0?'var(--green)':'var(--gray)'};">$${(d.debe||0).toFixed(2)}</td>
+        <td><span class="badge ${d.estadoPago==='pagado'?'badge-active':d.estadoPago==='pendiente'?'badge-moroso':'badge-active'}">${d.estadoPago==='pagado'?'Al día':d.estadoPago==='pendiente'?'Debe':'Sin citas'}</span></td>
+        <td style="font-size:.78rem;color:var(--gray);">${fmtDate(d.creadoEn)}</td>
+        <td>
+          ${d.debe>0&&d.estadoPago==='pendiente'?`<button class="btn-tbl green" onclick="abrirCobro('${d.uid}','${d.nombreCompleto||d.nombre}',${d.debe})">💰 Cobrar</button>`:''}
+          <button class="btn-tbl blue" onclick="verDoctor('${d.uid}')">Ver</button>
+          ${d.estadoPago!=='suspendido'?`<button class="btn-tbl red" onclick="suspenderDoctor('${d.uid}')">Suspender</button>`:
+          `<button class="btn-tbl green" onclick="activarDoctor('${d.uid}')">Activar</button>`}
+        </td>
+      </tr>`).join('');
+  }
+
+  window.filterDoctores = () => {
+    const q     = document.getElementById('docSearch').value.toLowerCase();
+    const est   = document.getElementById('docFiltroEstado').value;
+    const esp   = document.getElementById('docFiltroEsp').value;
+    const filtered = allDoctores.filter(d =>
+      (!q || (d.nombreCompleto||d.nombre||'').toLowerCase().includes(q) || (d.slug||'').includes(q)) &&
+      (!est || (est==='moroso'?d.estadoPago==='pendiente':est==='activo'?d.estadoPago!=='suspendido':d.estadoPago===est)) &&
+      (!esp || d.especialidad===esp)
+    );
+    renderDoctoresTable(filtered);
+  };
+
+  function populateEspFilter() {
+    const esps = [...new Set(allDoctores.map(d=>d.especialidad).filter(Boolean))].sort();
+    const sel = document.getElementById('docFiltroEsp');
+    sel.innerHTML = '<option value="">Todas las especialidades</option>' + esps.map(e=>`<option value="${e}">${e}</option>`).join('');
+  }
+
+  // ── FACTURACIÓN ───────────────────────────────────────────────────
+  function renderFacturacion(docs) {
+    const tbody = document.getElementById('facTableBody');
+    const conCitas = docs.filter(d => d.citasMes > 0);
+    if (!conCitas.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray);">Sin actividad este mes</td></tr>`; return; }
+    tbody.innerHTML = conCitas.sort((a,b) => b.debe-a.debe).map(d => `
+      <tr>
+        <td><div class="td-name">${d.nombreCompleto||d.nombre}</div><div class="td-sub">${d.email}</div></td>
+        <td><a href="https://savanamed.net/${d.slug}" target="_blank" style="color:var(--green);">/${d.slug}</a></td>
+        <td style="font-weight:600;">${d.citasMes}</td>
+        <td style="font-weight:700;color:var(--green);">$${d.debe.toFixed(2)}</td>
+        <td><span class="badge ${d.estadoPago==='pagado'?'badge-active':'badge-moroso'}">${d.estadoPago==='pagado'?'✅ Pagado':'⏳ Pendiente'}</span></td>
+        <td>
+          ${d.estadoPago!=='pagado'?`<button class="btn-tbl green" onclick="abrirCobro('${d.uid}','${d.nombreCompleto||d.nombre}',${d.debe})">💰 Marcar pagado</button>`:'<span style="color:var(--gray);font-size:.78rem;">Cobrado ✓</span>'}
+        </td>
+      </tr>`).join('');
+  }
+
+  // ── COBRO ─────────────────────────────────────────────────────────
+  window.abrirCobro = (uid, nombre, monto) => {
+    document.getElementById('cobroDocUid').value    = uid;
+    document.getElementById('cobroDocNombre').value = nombre;
+    document.getElementById('cobroMonto').value     = monto.toFixed(2);
+    document.getElementById('modalCobro').classList.add('show');
+  };
+
+  document.getElementById('btnSaveCobro').addEventListener('click', async () => {
+    const uid    = document.getElementById('cobroDocUid').value;
+    const monto  = parseFloat(document.getElementById('cobroMonto').value);
+    const metodo = document.getElementById('cobroMetodo').value;
+    const nota   = document.getElementById('cobroNota').value.trim();
+    if (!monto) { showToast('Ingresa el monto', 'error'); return; }
+
+    await addDoc(collection(db, 'doctores', uid, 'pagosAdmin'), {
+      tipo: 'cobro', monto, metodo, nota,
+      fecha: new Date().toISOString(),
+      mes: new Date().getMonth(),
+      anio: new Date().getFullYear(),
+    });
+
+    closeModal('modalCobro');
+    showToast('Cobro registrado ✅', 'success');
+    loadAll();
+  });
+
+  // ── CITAS ADMIN ───────────────────────────────────────────────────
+  function renderCitasAdmin(citas) {
+    const tbody = document.getElementById('citasAdminBody');
+    if (!citas.length) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--gray);">Sin citas</td></tr>`; return; }
+    tbody.innerHTML = citas.slice(0,100).map(c => `
+      <tr>
+        <td><div class="td-name">${c.pacienteNombre||'—'}</div><div class="td-sub">${c.pacienteTel||''}</div></td>
+        <td><div class="td-name">${c.doctorNombre||'—'}</div><div class="td-sub">/${c.doctorSlug||''}</div></td>
+        <td>${fmtDateTime(c.fechaHora)}</td>
+        <td>${c.tipo||'—'}</td>
+        <td><span class="badge ${badgeClass(c.estado)}">${c.estado||'pendiente'}</span></td>
+      </tr>`).join('');
+  }
+
+  window.filterCitasAdmin = () => {
+    const q   = document.getElementById('citasAdminSearch').value.toLowerCase();
+    const est = document.getElementById('citasAdminFiltro').value;
+    renderCitasAdmin(allCitasAdmin.filter(c =>
+      (!q || (c.pacienteNombre||'').toLowerCase().includes(q) || (c.doctorNombre||'').toLowerCase().includes(q)) &&
+      (!est || c.estado === est)
+    ));
+  };
+
+  // ── MÉTRICAS ──────────────────────────────────────────────────────
+  function renderMetricas() {
+    const conCitas = allDoctores.filter(d => d.citasMes > 0);
+    const promedio = conCitas.length ? conCitas.reduce((s,d)=>s+d.debe,0)/conCitas.length : 0;
+    const top = [...allDoctores].sort((a,b) => b.citasMes-a.citasMes)[0];
+    const esps = {};
+    allDoctores.forEach(d => { if(d.especialidad) esps[d.especialidad] = (esps[d.especialidad]||0)+1; });
+    const topEsp = Object.entries(esps).sort((a,b)=>b[1]-a[1])[0];
+
+    document.getElementById('metPromedio').textContent   = `$${promedio.toFixed(2)}`;
+    document.getElementById('metTopDoctor').textContent  = top ? (top.nombreCompleto||top.nombre) : '—';
+    document.getElementById('metTopSub').textContent     = top ? `${top.citasMes} citas este mes` : '—';
+    document.getElementById('metTopEsp').textContent     = topEsp ? topEsp[0] : '—';
+    document.getElementById('metCrecimiento').textContent = `+${allDoctores.filter(d=>{const dias=(Date.now()-new Date(d.creadoEn))/86400000;return dias<=30;}).length} este mes`;
+
+    // Ciudades
+    const ciudades = {};
+    allDoctores.forEach(d => { if(d.ciudad) ciudades[d.ciudad] = (ciudades[d.ciudad]||0)+1; });
+    const ciudadesEl = document.getElementById('ciudadesChart');
+    ciudadesEl.innerHTML = Object.entries(ciudades).sort((a,b)=>b[1]-a[1]).map(([c,n]) => `
+      <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.6rem;">
+        <div style="font-size:.82rem;min-width:100px;">${c}</div>
+        <div style="flex:1;background:#f0f0f0;border-radius:4px;height:8px;">
+          <div style="background:var(--green);height:8px;border-radius:4px;width:${Math.min(100,n*20)}%;"></div>
+        </div>
+        <div style="font-size:.78rem;font-weight:600;min-width:20px;">${n}</div>
+      </div>`).join('');
+
+    // Especialidades
+    const espEl = document.getElementById('especialidadesChart');
+    espEl.innerHTML = Object.entries(esps).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([e,n]) => `
+      <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:.6rem;">
+        <div style="font-size:.82rem;flex:1;">${e}</div>
+        <div style="background:#f0f0f0;border-radius:4px;height:8px;width:120px;">
+          <div style="background:var(--lime);height:8px;border-radius:4px;width:${Math.min(100,n*25)}%;"></div>
+        </div>
+        <div style="font-size:.78rem;font-weight:600;min-width:20px;">${n}</div>
+      </div>`).join('');
+  }
+
+  // ── ALERTAS ───────────────────────────────────────────────────────
+  function renderAlertas() {
+    const alertas = [];
+    allDoctores.forEach(d => {
+      if (d.estadoPago === 'pendiente' && d.debe > 0) {
+        alertas.push({ icon:'💳', title:`${d.nombreCompleto||d.nombre} debe $${d.debe.toFixed(2)}`, sub:`${d.citasMes} citas sin cobrar este mes`, time: fmtDate(new Date()) });
+      }
+      if (d.citasTotal === 0) {
+        alertas.push({ icon:'⚠️', title:`${d.nombreCompleto||d.nombre} no tiene citas`, sub:`Registrado el ${fmtDate(d.creadoEn)} — puede necesitar soporte`, time: fmtDate(d.creadoEn) });
+      }
+    });
+
+    const el = document.getElementById('alertasList');
+    if (!alertas.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><p>Sin alertas pendientes</p></div>'; return; }
+    el.innerHTML = alertas.map(a => `
+      <div class="alerta-row">
+        <div class="alerta-icon">${a.icon}</div>
+        <div><div class="alerta-title">${a.title}</div><div class="alerta-sub">${a.sub}</div></div>
+        <div class="alerta-time">${a.time}</div>
+      </div>`).join('');
+  }
+
+  // ── CHART ─────────────────────────────────────────────────────────
+  function renderChart() {
+    const meses = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setMonth(d.getMonth() - i);
+      const mes = d.getMonth(); const anio = d.getFullYear();
+      const citas = allCitasAdmin.filter(c => {
+        const f = new Date(c.fechaHora);
+        return f.getMonth()===mes && f.getFullYear()===anio;
+      }).length;
+      meses.push({ label: d.toLocaleDateString('es-VE',{month:'short'}), citas });
+    }
+    const max = Math.max(...meses.map(m=>m.citas), 1);
+    document.getElementById('chartWrap').innerHTML = meses.map(m => `
+      <div class="chart-bar-wrap">
+        <div class="chart-bar" style="height:${Math.max(4,(m.citas/max)*160)}px;">
+          <div class="chart-tooltip">${m.citas} citas</div>
+        </div>
+        <div class="chart-label">${m.label}</div>
+      </div>`).join('');
+  }
+
+  // ── ACCIONES DOCTOR ───────────────────────────────────────────────
+  window.suspenderDoctor = async (uid) => {
+    if (!confirm('¿Suspender acceso a este doctor?')) return;
+    await updateDoc(doc(db, 'doctores', uid), { suspendido: true });
+    showToast('Doctor suspendido', 'error');
+    loadAll();
+  };
+
+  window.activarDoctor = async (uid) => {
+    await updateDoc(doc(db, 'doctores', uid), { suspendido: false });
+    showToast('Doctor activado ✅', 'success');
+    loadAll();
+  };
+
+  window.verDoctor = (uid) => {
+    const d = allDoctores.find(x => x.uid === uid);
+    if (!d) return;
+    alert(`${d.nombreCompleto||d.nombre}\n${d.especialidad} · ${d.ciudad}\nEmail: ${d.email}\nLink: savanamed.net/${d.slug}\nCitas este mes: ${d.citasMes}\nDebe: $${d.debe}`);
+  };
+
+  // ── NAVIGATION ────────────────────────────────────────────────────
+  const TITLES = { dashboard:'Dashboard', alertas:'Alertas', doctores:'Doctores', facturacion:'Facturación', citas:'Todas las citas', metricas:'Métricas' };
+  document.querySelectorAll('.nav-item[data-section]').forEach(btn => {
+    btn.addEventListener('click', () => goTo(btn.dataset.section));
+  });
+
+  window.goTo = (sec) => {
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    document.querySelector(`.nav-item[data-section="${sec}"]`)?.classList.add('active');
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(`sec-${sec}`)?.classList.add('active');
+    document.getElementById('topbarTitle').textContent = TITLES[sec] || sec;
+  };
+
+  document.getElementById('btnLogout').addEventListener('click', () => {
+    sessionStorage.removeItem('savanamed_admin');
+    window.location.reload();
+  });
+
+  window.closeModal = (id) => document.getElementById(id).classList.remove('show');
+  document.getElementById('modalCobro').addEventListener('click', e => { if(e.target.id==='modalCobro') closeModal('modalCobro'); });
+
+  // ── HELPERS ───────────────────────────────────────────────────────
+  function fmtDate(dt)     { return new Date(dt).toLocaleDateString('es-VE',{day:'numeric',month:'short'}); }
+  function fmtDateTime(dt) { return new Date(dt).toLocaleDateString('es-VE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
+  function badgeClass(e)   { return {confirmada:'badge-active',pendiente:'badge-moroso',cancelada:'badge-suspended',urgente:'badge-new'}[e]||'badge-moroso'; }
+
+  function showToast(msg, type='') {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.className = `toast ${type} show`;
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+</script>
+</body>
+</html>
