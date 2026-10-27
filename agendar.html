@@ -489,6 +489,10 @@
   document.getElementById('backStep2').addEventListener('click', () => goToStep(2));
   document.getElementById('backStep3').addEventListener('click', () => goToStep(3));
 
+  function escapeHTML(t) {
+    return String(t).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+  }
+
   // ── CONFIRMAR ─────────────────────────────────────────────────────
   document.getElementById('btnConfirmar').addEventListener('click', async () => {
     const btn = document.getElementById('btnConfirmar');
@@ -496,7 +500,7 @@
     btn.textContent = 'Guardando...';
 
     try {
-      await addDoc(collection(db, 'doctores', doctorUID, 'citas'), {
+      const citaRef = await addDoc(collection(db, 'doctores', doctorUID, 'citas'), {
         pacienteNombre: document.getElementById('pacNombre').value.trim(),
         pacienteTel:    document.getElementById('pacWA').value.trim(),
         pacienteEmail:  document.getElementById('pacEmail').value.trim(),
@@ -508,12 +512,24 @@
         origen:         'publico',
       });
 
+      // Avisar al backend para que envíe los emails. No esperamos la respuesta:
+      // la cita ya está guardada, y si el aviso falla no debe asustar al paciente.
+      // keepalive permite que la petición termine aunque el paciente cierre la página.
+      fetch('/api/notificar-cita', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doctorUid: doctorUID, citaId: citaRef.id }),
+        keepalive: true,
+      }).catch((e) => console.warn('No se pudo enviar la notificación', e));
+
       const fechaObj = new Date(selectedFecha + 'T12:00');
       document.getElementById('successDetail').innerHTML = `
         <div class="sd-row"><span class="sd-icon">👨‍⚕️</span><span>${doctorData.nombre}</span></div>
         <div class="sd-row"><span class="sd-icon">📅</span><span>${fechaObj.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' })} a las ${selectedHora}</span></div>
-        <div class="sd-row"><span class="sd-icon">📱</span><span>Confirmación por WhatsApp: ${document.getElementById('pacWA').value.trim()}</span></div>
-        <div class="sd-row"><span class="sd-icon">🔔</span><span>Recibirás un recordatorio 24h antes de tu cita</span></div>
+        ${document.getElementById('pacEmail').value.trim()
+          ? `<div class="sd-row"><span class="sd-icon">✉️</span><span>Te enviamos la confirmación a ${escapeHTML(document.getElementById('pacEmail').value.trim())}</span></div>`
+          : ''}
+        <div class="sd-row"><span class="sd-icon">🔔</span><span>El consultorio revisará tu solicitud y te confirmará</span></div>
       `;
 
       document.querySelectorAll('.steps-indicator, .doctor-card').forEach(el => el.style.display = 'none');
