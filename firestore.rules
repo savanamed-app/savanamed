@@ -66,8 +66,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
 
       // Citas: PRIVADAS. Ya no se pueden leer ni crear públicamente.
+      // El doctor puede crear citas manuales y editar datos, pero el ESTADO,
+      // el historial y los avisos solo los cambia el servidor
+      // (/api/cita-estado), que valida, libera el horario y avisa al paciente.
       match /citas/{citaId} {
-        allow read, write: if isOwner(uid) || isAdmin();
+        allow read, create, delete: if isOwner(uid) || isAdmin();
+        allow update: if isAdmin()
+                      || (isOwner(uid)
+                          && !request.resource.data.diff(resource.data).affectedKeys()
+                                .hasAny(['estado', 'historial', 'notificaciones', 'origen']));
       }
       match /pacientes/{pacId} {
         allow read, write: if isOwner(uid) || isAdmin();

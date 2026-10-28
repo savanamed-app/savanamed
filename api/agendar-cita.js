@@ -48,6 +48,8 @@ export function validarSolicitud(body = {}) {
   if (!RE_SLUG.test(slug)) throw new ErrorReserva(400, 'Doctor inválido');
   if (!TIPOS.has(tipo)) throw new ErrorReserva(400, 'Tipo de cita inválido');
   if (nombre.length < 2) throw new ErrorReserva(400, 'Ingresa tu nombre completo');
+  // Un nombre real nunca lleva < o >: eso solo aparece en intentos de meter código
+  if (/[<>]/.test(nombre)) throw new ErrorReserva(400, 'El nombre contiene caracteres no permitidos');
   if (!telefono) throw new ErrorReserva(400, 'Ingresa un número de teléfono válido, por ejemplo 0412 1234567');
   if (email && !RE_EMAIL.test(email)) throw new ErrorReserva(400, 'El email no es válido');
 

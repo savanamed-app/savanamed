@@ -585,7 +585,7 @@
   <div class="confirm-box">
     <div class="confirm-icon">❌</div>
     <div class="confirm-title">¿Cancelar esta cita?</div>
-    <div class="confirm-sub">El paciente será notificado automáticamente. Esta acción no se puede deshacer.</div>
+    <div class="confirm-sub">Si el paciente dejó su email, le avisaremos automáticamente. El horario quedará libre para otro paciente. Esta acción no se puede deshacer.</div>
     <div class="confirm-btns">
       <button class="btn-cancel-modal" style="flex:1;padding:11px;border-radius:100px;border:1.5px solid #e5e7eb;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;" onclick="document.getElementById('confirmCancel').classList.remove('show')">No cancelar</button>
       <button class="btn-danger-modal" style="flex:1;" id="btnConfirmCancel">Sí, cancelar</button>
@@ -719,9 +719,9 @@
     if (!tiposCita.length) { list.innerHTML = '<div class="empty"><p>No hay tipos de cita. Agrega uno.</p></div>'; return; }
     list.innerHTML = tiposCita.map((t,i) => `
       <div class="tipo-item">
-        <span class="ti-emoji">${t.emoji || '📋'}</span>
-        <span class="ti-name">${t.nombre}</span>
-        <span class="ti-dur">${t.duracion} min</span>
+        <span class="ti-emoji">${esc(t.emoji || '📋')}</span>
+        <span class="ti-name">${esc(t.nombre)}</span>
+        <span class="ti-dur">${esc(t.duracion)} min</span>
         <button class="btn-tbl green" onclick="editTipo(${i})">Editar</button>
         <button class="btn-tbl red" onclick="deleteTipo(${i})">Borrar</button>
       </div>
@@ -730,9 +730,9 @@
 
   function updateTiposSelect() {
     const sel = document.getElementById('ncTipo');
-    sel.innerHTML = tiposCita.map(t => `<option value="${t.nombre}">${t.emoji || '📋'} ${t.nombre}</option>`).join('');
+    sel.innerHTML = tiposCita.map(t => `<option value="${esc(t.nombre)}">${esc(t.emoji || '📋')} ${esc(t.nombre)}</option>`).join('');
     const filtro = document.getElementById('citasFiltroTipo');
-    filtro.innerHTML = '<option value="">Todos los tipos</option>' + tiposCita.map(t => `<option value="${t.nombre}">${t.nombre}</option>`).join('');
+    filtro.innerHTML = '<option value="">Todos los tipos</option>' + tiposCita.map(t => `<option value="${esc(t.nombre)}">${esc(t.nombre)}</option>`).join('');
   }
 
   window.editTipo = (i) => {
@@ -894,12 +894,12 @@
       listEl.innerHTML = citasHoy.map(c => `
         <div class="cita-row">
           <div class="cita-time">${fmtTime(c.fechaHora)}</div>
-          <div class="cita-avatar-sm ${c.estado==='urgente'?'urg':''}">${tipoEmoji(c.tipo)}</div>
+          <div class="cita-avatar-sm ${c.estado==='urgente'?'urg':''}">${esc(tipoEmoji(c.tipo))}</div>
           <div class="cita-info">
-            <div class="cita-name">${c.pacienteNombre}</div>
-            <div class="cita-tipo-text">${c.tipo || '—'}</div>
+            <div class="cita-name">${esc(c.pacienteNombre)}</div>
+            <div class="cita-tipo-text">${esc(c.tipo || '—')}</div>
           </div>
-          <span class="badge ${badgeClass(c.estado)}">${c.estado||'pendiente'}</span>
+          <span class="badge ${badgeClass(c.estado)}">${esc(c.estado||'pendiente')}</span>
         </div>`).join('');
     }
 
@@ -911,7 +911,7 @@
       pendEl.innerHTML = pendientes.slice(0,4).map(c => `
         <div class="cita-row">
           <div class="cita-time">${fmtDate(c.fechaHora)}</div>
-          <div class="cita-info"><div class="cita-name">${c.pacienteNombre}</div><div class="cita-tipo-text">${c.tipo||'—'}</div></div>
+          <div class="cita-info"><div class="cita-name">${esc(c.pacienteNombre)}</div><div class="cita-tipo-text">${esc(c.tipo||'—')}</div></div>
           <span class="badge badge-pend">pendiente</span>
         </div>`).join('');
     }
@@ -950,8 +950,8 @@
     el.innerHTML = `<div style="font-size:.72rem;font-weight:700;color:var(--gray);text-transform:uppercase;margin-bottom:.4rem;">${new Date(dateStr+'T12:00').toLocaleDateString('es-VE',{weekday:'long',day:'numeric',month:'long'})}</div>` +
       citas.map(c=>`<div class="cita-row" style="padding:.4rem 0;">
         <div class="cita-time">${fmtTime(c.fechaHora)}</div>
-        <div class="cita-info"><div class="cita-name">${c.pacienteNombre}</div><div class="cita-tipo-text">${c.tipo||'—'}</div></div>
-        <span class="badge ${badgeClass(c.estado)}">${c.estado||'pendiente'}</span>
+        <div class="cita-info"><div class="cita-name">${esc(c.pacienteNombre)}</div><div class="cita-tipo-text">${esc(c.tipo||'—')}</div></div>
+        <span class="badge ${badgeClass(c.estado)}">${esc(c.estado||'pendiente')}</span>
       </div>`).join('');
   };
 
@@ -968,10 +968,10 @@
     if (!citas.length) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--gray);">No hay citas aún</td></tr>`; return; }
     tbody.innerHTML = citas.map(c => `
       <tr>
-        <td><div class="td-name">${c.pacienteNombre}</div><div class="td-sub">${c.pacienteTel||''}</div></td>
+        <td><div class="td-name">${esc(c.pacienteNombre)}</div><div class="td-sub">${esc(c.pacienteTel||'')}</div></td>
         <td>${fmtDateTime(c.fechaHora)}</td>
-        <td><span class="badge badge-rev">${tipoEmoji(c.tipo)} ${c.tipo||'—'}</span></td>
-        <td><span class="badge ${badgeClass(c.estado)}">${c.estado||'pendiente'}</span></td>
+        <td><span class="badge badge-rev">${esc(tipoEmoji(c.tipo))} ${esc(c.tipo||'—')}</span></td>
+        <td><span class="badge ${badgeClass(c.estado)}">${esc(c.estado||'pendiente')}</span></td>
         <td>
           ${c.estado!=='confirmada'?`<button class="btn-tbl green" onclick="confirmarCita('${c.id}')">✅ Confirmar</button>`:''}
           ${c.estado!=='cancelada'?`<button class="btn-tbl red" onclick="pedirCancelar('${c.id}')">❌ Cancelar</button>`:''}
@@ -991,9 +991,35 @@
     renderCitasTable(filtered);
   };
 
+  // Confirmar y cancelar pasan por el servidor (/api/cita-estado): valida,
+  // libera el horario, guarda el historial y le avisa al paciente.
+  // Mandamos el token de sesión para que el servidor sepa qué doctor es.
+  async function cambiarEstado(citaId, accion) {
+    const token = await auth.currentUser.getIdToken();
+    const resp = await fetch('/api/cita-estado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ citaId, accion }),
+    });
+    const datos = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(datos.error || 'No pudimos actualizar la cita');
+    return datos;
+  }
+  const tieneEmail = (id) => !!allCitas.find(c => c.id === id)?.pacienteEmail;
+
+  let procesando = false; // evita doble clic mientras el servidor responde
+
   window.confirmarCita = async (id) => {
-    await updateDoc(doc(db, 'doctores', uid, 'citas', id), { estado: 'confirmada' });
-    showToast('Cita confirmada ✅', 'success');
+    if (procesando) return;
+    procesando = true;
+    try {
+      await cambiarEstado(id, 'confirmar');
+      showToast(tieneEmail(id) ? 'Cita confirmada ✅ Le avisamos al paciente' : 'Cita confirmada ✅', 'success');
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      procesando = false;
+    }
   };
 
   window.pedirCancelar = (id) => {
@@ -1002,19 +1028,22 @@
   };
 
   document.getElementById('btnConfirmCancel').addEventListener('click', async () => {
-    if (!cancelCitaId) return;
-    const cita = allCitas.find(c => c.id === cancelCitaId);
-    const batch = writeBatch(db);
-    batch.update(doc(db, 'doctores', uid, 'citas', cancelCitaId), { estado: 'cancelada' });
-    // Liberar el horario en el tablero público, solo si pertenece a esta cita
-    if (cita?.fechaHora) {
-      const slot = await getDoc(slotRef(cita.fechaHora)).catch(() => null);
-      if (slot?.exists() && slot.data().citaId === cancelCitaId) batch.delete(slotRef(cita.fechaHora));
+    if (!cancelCitaId || procesando) return;
+    procesando = true;
+    const id = cancelCitaId;
+    const boton = document.getElementById('btnConfirmCancel');
+    boton.disabled = true;
+    try {
+      await cambiarEstado(id, 'cancelar');
+      document.getElementById('confirmCancel').classList.remove('show');
+      showToast(tieneEmail(id) ? 'Cita cancelada. Le avisamos al paciente por email' : 'Cita cancelada (el paciente no dejó email: avísale por teléfono)', 'error');
+      cancelCitaId = null;
+    } catch (e) {
+      showToast(e.message, 'error');
+    } finally {
+      procesando = false;
+      boton.disabled = false;
     }
-    await batch.commit();
-    document.getElementById('confirmCancel').classList.remove('show');
-    showToast('Cita cancelada — el paciente será notificado', 'error');
-    cancelCitaId = null;
   });
 
   // ── PACIENTES ─────────────────────────────────────────────────────
@@ -1023,8 +1052,8 @@
     if (!pacs.length) { tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--gray);">Sin pacientes registrados</td></tr>`; return; }
     tbody.innerHTML = pacs.map(p => `
       <tr>
-        <td><div class="td-name">${p.nombre} ${p.apellido||''}</div><div class="td-sub">${p.cedula||p.email||''}</div></td>
-        <td>${p.telefono||'—'}</td>
+        <td><div class="td-name">${esc(p.nombre)} ${esc(p.apellido||'')}</div><div class="td-sub">${esc(p.cedula||p.email||'')}</div></td>
+        <td>${esc(p.telefono||'—')}</td>
         <td>${p.ultimaVisita ? fmtDate(p.ultimaVisita) : '—'}</td>
         <td>${p.totalCitas||0}</td>
         <td><button class="btn-tbl green">Ver historial</button></td>
@@ -1077,8 +1106,8 @@
     } else {
       recEl.innerHTML = allPagos.slice(0,4).map(p=>`
         <div class="pago-row">
-          <div><div class="pago-name">${p.paciente}</div><div class="pago-method">${metodoLabel(p.metodo)} · ${fmtDate(p.fecha)}</div></div>
-          <div style="text-align:right;"><div class="pago-amount">$${parseFloat(p.monto).toFixed(2)}</div><span class="pago-status ${p.estado==='pagado'?'ps-paid':'ps-pend'}">${p.estado}</span></div>
+          <div><div class="pago-name">${esc(p.paciente)}</div><div class="pago-method">${esc(metodoLabel(p.metodo))} · ${fmtDate(p.fecha)}</div></div>
+          <div style="text-align:right;"><div class="pago-amount">$${parseFloat(p.monto).toFixed(2)}</div><span class="pago-status ${p.estado==='pagado'?'ps-paid':'ps-pend'}">${esc(p.estado)}</span></div>
         </div>`).join('');
     }
 
@@ -1086,11 +1115,11 @@
     if (!allPagos.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--gray);">Sin pagos</td></tr>`; return; }
     tbody.innerHTML = allPagos.map(p=>`
       <tr>
-        <td class="td-name">${p.paciente}</td>
+        <td class="td-name">${esc(p.paciente)}</td>
         <td>${fmtDate(p.fecha)}</td>
-        <td>${metodoLabel(p.metodo)}</td>
+        <td>${esc(metodoLabel(p.metodo))}</td>
         <td style="font-weight:700;color:var(--green);">$${parseFloat(p.monto).toFixed(2)}</td>
-        <td><span class="pago-status ${p.estado==='pagado'?'ps-paid':'ps-pend'}">${p.estado}</span></td>
+        <td><span class="pago-status ${p.estado==='pagado'?'ps-paid':'ps-pend'}">${esc(p.estado)}</span></td>
         <td><button class="btn-tbl green" onclick="togglePago('${p.id}','${p.estado}')">${p.estado==='pagado'?'Marcar pendiente':'Marcar pagado'}</button></td>
       </tr>`).join('');
   }
@@ -1225,6 +1254,13 @@
   });
 
   // ── HELPERS ───────────────────────────────────────────────────────
+  // Todo texto que escribe un paciente (o cualquier dato guardado) se "escapa"
+  // antes de meterlo en la página. Sin esto, alguien podría agendar una cita
+  // con un "nombre" que en realidad es código, y ese código correría dentro
+  // del panel del doctor con acceso a todos sus pacientes (ataque XSS).
+  function esc(v) {
+    return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+  }
   function fmtTime(dt)     { return new Date(dt).toLocaleTimeString('es-VE',{hour:'2-digit',minute:'2-digit'}); }
   function fmtDate(dt)     { return new Date(dt).toLocaleDateString('es-VE',{day:'numeric',month:'short'}); }
   function fmtDateTime(dt) { return new Date(dt).toLocaleDateString('es-VE',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }
