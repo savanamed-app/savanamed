@@ -290,7 +290,8 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, doc, getDoc, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { leerHorario, diaDisponible, generarSlots, ahoraVenezuela, aMinutos, normalizarTelefono, formatearTelefono } from "/lib/agenda.js";
 
   const app = initializeApp({
     apiKey: "AIzaSyDN0AcvUM056iG2VMJV_Tx74Tx1ZNAbMh0",
@@ -304,6 +305,7 @@
 
   let doctorData = null;
   let doctorUID  = null;
+  let horario    = null;
   let selectedTipo  = null;
   let selectedFecha = null;
   let selectedHora  = null;
@@ -328,10 +330,11 @@
       document.getElementById('docNombre').textContent = doctorData.nombre;
       document.getElementById('docEspec').textContent  = doctorData.especialidad || '';
 
+      horario = leerHorario(doctorData);
       const infoEl = document.getElementById('docInfo');
-      if (doctorData.direccion)       infoEl.innerHTML += `<div class="doctor-info-tag">📍 ${doctorData.direccion}</div>`;
-      if (doctorData.ciudad)          infoEl.innerHTML += `<div class="doctor-info-tag">🏙️ ${doctorData.ciudad}</div>`;
-      if (doctorData.duracionCita)    infoEl.innerHTML += `<div class="doctor-info-tag">⏱ Citas de ${doctorData.duracionCita} min</div>`;
+      if (doctorData.direccion) infoEl.innerHTML += `<div class="doctor-info-tag">📍 ${escapeHTML(doctorData.direccion)}</div>`;
+      if (doctorData.ciudad)    infoEl.innerHTML += `<div class="doctor-info-tag">🏙️ ${escapeHTML(doctorData.ciudad)}</div>`;
+      infoEl.innerHTML += `<div class="doctor-info-tag">⏱ Citas de ${horario.duracionCita} min</div>`;
 
       document.getElementById('loadingScreen').classList.add('hidden');
       document.getElementById('mainNav').style.display = '';
@@ -380,13 +383,12 @@
     }
     for (let d = 1; d <= daysInMonth; d++) {
       const date    = new Date(year, month, d);
-      const isPast  = date < today;
-      const isSun   = date.getDay() === 0;
       const isToday = date.toDateString() === today.toDateString();
       const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const isSel   = dateStr === selectedFecha;
+      const libre   = diaDisponible(horario, dateStr);
       html += `<button class="cal-day-btn${isToday?' today':''}${isSel?' selected':''}"
-        ${isPast||isSun ? 'disabled' : `data-date="${dateStr}"`}>${d}</button>`;
+        ${libre ? `data-date="${dateStr}"` : 'disabled'}>${d}</button>`;
     }
 
     const grid = document.getElementById('calGrid');
@@ -413,33 +415,29 @@
     sec.style.display = 'block';
     grid.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--gray);font-size:.85rem;">Cargando horarios...</div>';
 
-    const duracion = parseInt(doctorData.duracionCita) || 30;
-
-    // Get booked slots — handle errors gracefully
+    // Horarios ocupados: se leen del "tablero" público (solo fecha y hora,
+    // ningún dato de pacientes). El servidor igual vuelve a verificar al reservar.
     let booked = [];
     try {
-      const citasRef  = collection(db, 'doctores', doctorUID, 'citas');
-      const citasSnap = await getDocs(query(citasRef,
-        where('fechaHora', '>=', fecha + 'T00:00'),
-        where('fechaHora', '<=', fecha + 'T23:59')
-      ));
-      booked = citasSnap.docs
-        .filter(d => d.data().estado !== 'cancelada')
-        .map(d => d.data().fechaHora.slice(11,16));
+      const ocupadosRef = collection(db, 'disponibilidad', doctorUID, 'ocupados');
+      const snap = await getDocs(query(ocupadosRef, where('fecha', '==', fecha)));
+      booked = snap.docs.map(d => d.data().hora);
     } catch(e) {
-      console.warn('No se pudieron cargar citas ocupadas:', e);
+      console.warn('No se pudieron cargar los horarios ocupados:', e);
     }
 
-    // Generate slots 8am-6pm
-    const slots = [];
-    for (let h = 8; h < 18; h++) {
-      for (let m = 0; m < 60; m += duracion) {
-        slots.push(`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`);
-      }
-    }
+    // Horarios según la agenda real del doctor; si es hoy, sin los que ya pasaron
+    const ahora = ahoraVenezuela();
+    const slots = generarSlots(horario)
+      .filter(h => fecha !== ahora.fecha || aMinutos(h) > ahora.minutos);
 
     const fechaObj = new Date(fecha + 'T12:00');
     label.textContent = `Horarios · ${fechaObj.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' })}`;
+
+    if (!slots.length || slots.every(h => booked.includes(h))) {
+      grid.innerHTML = '<div class="no-slots">No quedan horarios disponibles este día. Prueba con otro.</div>';
+      return;
+    }
 
     grid.innerHTML = slots.map(hora => {
       const taken = booked.includes(hora);
@@ -471,7 +469,13 @@
     ['pacNombre','pacWA'].forEach(id => document.getElementById(id).classList.remove('error'));
 
     if (!nombre) { document.getElementById('pacNombreErr').classList.add('show'); document.getElementById('pacNombre').classList.add('error'); ok = false; }
-    if (!wa)     { document.getElementById('pacWAErr').classList.add('show'); document.getElementById('pacWA').classList.add('error'); ok = false; }
+    const telNormalizado = normalizarTelefono(wa);
+    if (!telNormalizado) {
+      document.getElementById('pacWAErr').textContent = wa ? 'Número inválido. Ejemplo: 0412 1234567' : 'Ingresa tu número de WhatsApp';
+      document.getElementById('pacWAErr').classList.add('show');
+      document.getElementById('pacWA').classList.add('error');
+      ok = false;
+    }
     if (!ok) return;
 
     const tipoLabels = { consulta:'🩺 Consulta general', revision:'✅ Revisión / control', procedimiento:'🔧 Procedimiento', emergencia:'🚨 Emergencia' };
@@ -482,12 +486,18 @@
     document.getElementById('resFecha').textContent   = fechaObj.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
     document.getElementById('resHora').textContent    = selectedHora;
     document.getElementById('resPaciente').textContent = nombre;
-    document.getElementById('resWA').textContent      = wa;
+    document.getElementById('resWA').textContent      = formatearTelefono(telNormalizado);
 
     goToStep(4);
   });
   document.getElementById('backStep2').addEventListener('click', () => goToStep(2));
   document.getElementById('backStep3').addEventListener('click', () => goToStep(3));
+
+  function mostrarError(msg) {
+    const errEl = document.getElementById('alertError');
+    errEl.textContent = msg;
+    errEl.classList.add('show');
+  }
 
   function escapeHTML(t) {
     return String(t).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
@@ -500,31 +510,38 @@
     btn.textContent = 'Guardando...';
 
     try {
-      const citaRef = await addDoc(collection(db, 'doctores', doctorUID, 'citas'), {
-        pacienteNombre: document.getElementById('pacNombre').value.trim(),
-        pacienteTel:    document.getElementById('pacWA').value.trim(),
-        pacienteEmail:  document.getElementById('pacEmail').value.trim(),
-        tipo:           selectedTipo,
-        fechaHora:      `${selectedFecha}T${selectedHora}`,
-        motivo:         document.getElementById('pacMotivo').value.trim(),
-        estado:         selectedTipo === 'emergencia' ? 'urgente' : 'pendiente',
-        creadoEn:       new Date().toISOString(),
-        origen:         'publico',
-      });
-
-      // Avisar al backend para que envíe los emails. No esperamos la respuesta:
-      // la cita ya está guardada, y si el aviso falla no debe asustar al paciente.
-      // keepalive permite que la petición termine aunque el paciente cierre la página.
-      fetch('/api/notificar-cita', {
+      const resp = await fetch('/api/agendar-cita', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ doctorUid: doctorUID, citaId: citaRef.id }),
-        keepalive: true,
-      }).catch((e) => console.warn('No se pudo enviar la notificación', e));
+        body: JSON.stringify({
+          slug:     doctorData.slug || slug,
+          tipo:     selectedTipo,
+          fecha:    selectedFecha,
+          hora:     selectedHora,
+          nombre:   document.getElementById('pacNombre').value.trim(),
+          telefono: document.getElementById('pacWA').value.trim(),
+          email:    document.getElementById('pacEmail').value.trim(),
+          motivo:   document.getElementById('pacMotivo').value.trim(),
+        }),
+      });
+      const data = await resp.json().catch(() => ({}));
+
+      if (resp.status === 409) {
+        // Otro paciente tomó ese horario segundos antes: volver a elegir
+        selectedHora = null;
+        btn.disabled = false;
+        btn.textContent = '✅ Confirmar cita';
+        goToStep(2);
+        document.getElementById('btnStep2Next').disabled = true;
+        loadSlots(selectedFecha);
+        mostrarError(data.error || 'Ese horario acaba de ser tomado. Elige otro, por favor.');
+        return;
+      }
+      if (!resp.ok) throw new Error(data.error || 'No pudimos guardar la cita. Intenta de nuevo.');
 
       const fechaObj = new Date(selectedFecha + 'T12:00');
       document.getElementById('successDetail').innerHTML = `
-        <div class="sd-row"><span class="sd-icon">👨‍⚕️</span><span>${doctorData.nombre}</span></div>
+        <div class="sd-row"><span class="sd-icon">👨‍⚕️</span><span>${escapeHTML(doctorData.nombre)}</span></div>
         <div class="sd-row"><span class="sd-icon">📅</span><span>${fechaObj.toLocaleDateString('es-VE', { weekday:'long', day:'numeric', month:'long' })} a las ${selectedHora}</span></div>
         ${document.getElementById('pacEmail').value.trim()
           ? `<div class="sd-row"><span class="sd-icon">✉️</span><span>Te enviamos la confirmación a ${escapeHTML(document.getElementById('pacEmail').value.trim())}</span></div>`
@@ -540,7 +557,7 @@
       btn.disabled = false;
       btn.textContent = '✅ Confirmar cita';
       const errEl = document.getElementById('alertError');
-      errEl.textContent = 'Error al guardar la cita. Intenta de nuevo.';
+      errEl.textContent = err.message || 'No pudimos guardar la cita. Intenta de nuevo.';
       errEl.classList.add('show');
       console.error(err);
     }

@@ -1,0 +1,86 @@
+rules_version = '2';
+
+// ════════════════════════════════════════════════════════════════════
+//  SAVANAMED — Reglas de seguridad de Firestore
+//
+//  Principio: cada doctor solo ve y modifica lo suyo. El público solo ve
+//  lo mínimo para agendar (perfil y horarios ocupados, sin datos de
+//  pacientes). Las citas públicas se crean SOLO desde el servidor
+//  (/api/agendar-cita), que usa credenciales de administrador y por eso
+//  no pasa por estas reglas.
+//
+//  Todo lo que no está explícitamente permitido aquí, está prohibido.
+// ════════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin()  { return signedIn() && request.auth.token.email == 'admin@savanamed.net'; }
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    // ── Índice slug → uid (público). Solo guarda el uid. ─────────────
+    // Crear: solo para uno mismo y solo si el slug está libre.
+    // Nadie puede quitarle el slug a otro doctor.
+    match /slugs/{slug} {
+      allow read: if true;
+      allow create: if signedIn()
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasOnly(['uid']);
+      allow update: if signedIn()
+                    && resource.data.uid == request.auth.uid
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.keys().hasOnly(['uid']);
+      allow delete: if isAdmin();
+    }
+
+    // ── Perfil público del doctor (lo que ve el paciente) ────────────
+    // Solo el dueño lo edita, y nunca puede cambiar el uid (eso
+    // desviaría las citas de otro doctor hacia su cuenta).
+    match /perfiles/{slug} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if isAdmin()
+                    || (signedIn()
+                        && resource.data.uid == request.auth.uid
+                        && request.resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
+    }
+
+    // ── Tablero público de horarios ocupados ─────────────────────────
+    // Solo fecha y hora, ningún dato del paciente. Lo lee la página de
+    // agendar; lo escriben el servidor y el doctor dueño desde su panel.
+    match /disponibilidad/{uid}/ocupados/{slotId} {
+      allow read: if true;
+      allow write: if isOwner(uid) || isAdmin();
+    }
+
+    // ── Cuenta privada del doctor ────────────────────────────────────
+    match /doctores/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      // Un doctor no puede crearse ni quitarse la suspensión a sí mismo
+      allow create: if isOwner(uid) && request.resource.data.get('suspendido', false) == false;
+      allow update: if isAdmin()
+                    || (isOwner(uid)
+                        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspendido']));
+      allow delete: if isAdmin();
+
+      // Citas: PRIVADAS. Ya no se pueden leer ni crear públicamente.
+      match /citas/{citaId} {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+      match /pacientes/{pacId} {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+      match /pagos/{pagoId} {
+        allow read, write: if isOwner(uid) || isAdmin();
+      }
+      // Cobros de Savanamed al doctor: solo el admin
+      match /pagosAdmin/{pagoId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
+    // La colección "limites" (anti-spam) no tiene regla: solo el servidor.
+  }
+}

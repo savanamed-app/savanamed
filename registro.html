@@ -578,17 +578,19 @@
       };
 
       await setDoc(doc(db, 'doctores', uid), doctorData);
+      // Primero se reserva el slug: las reglas solo permiten crearlo si nadie lo tiene.
+      // Solo guarda el uid (el email del doctor no debe ser público).
+      await setDoc(doc(db, 'slugs', v.slug), { uid });
       await setDoc(doc(db, 'perfiles', v.slug), {
         nombre: v.nombre + ' ' + v.apellido,
         especialidad: v.esp,
-        emoji: selectedEsp?.emoji || '👨u200d⚕️',
+        emoji: selectedEsp?.emoji || '👨‍⚕️',
         direccion: v.direccion,
         ciudad: v.ciudad,
         duracionCita: parseInt(v.duracion),
         slug: v.slug,
         uid,
       });
-      await setDoc(doc(db, 'slugs', v.slug), { uid, email: v.email });
 
       document.getElementById('loadingText').classList.remove('show');
       const s = document.getElementById('alertSuccess');

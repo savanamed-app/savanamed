@@ -598,7 +598,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, where, getDocs, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
   const app = initializeApp({
@@ -805,11 +805,51 @@
     showToast('Horarios guardados ✅', 'success');
   });
 
+  // ── TABLERO PÚBLICO DE HORARIOS OCUPADOS ──────────────────────────
+  // La página pública solo ve disponibilidad/{uid}/ocupados (fecha y hora, sin
+  // datos de pacientes). Estas funciones lo mantienen al día desde el panel.
+  const slotRef = (fechaHora) => doc(db, 'disponibilidad', uid, 'ocupados', String(fechaHora).slice(0, 16));
+  const hoyLocal = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+
+  // Al abrir el panel, alinea el tablero con las citas reales (una sola lectura
+  // y escrituras solo donde hay diferencias). También migra las citas viejas.
+  let tableroSincronizado = false;
+  async function sincronizarTablero(citas) {
+    if (tableroSincronizado) return;
+    tableroSincronizado = true;
+    try {
+      const hoy = hoyLocal();
+      const snap = await getDocs(query(collection(db, 'disponibilidad', uid, 'ocupados'), where('fecha', '>=', hoy)));
+      const tablero = new Map(snap.docs.map(d => [d.id, d.data()]));
+      const batch = writeBatch(db);
+      let cambios = 0;
+      for (const c of citas) {
+        const id = String(c.fechaHora || '').slice(0, 16);
+        if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(id) || id.slice(0, 10) < hoy) continue;
+        const actual = tablero.get(id);
+        if (c.estado !== 'cancelada' && !actual) {
+          batch.set(slotRef(id), { fecha: id.slice(0, 10), hora: id.slice(11), citaId: c.id }); cambios++;
+        } else if (c.estado === 'cancelada' && actual?.citaId === c.id) {
+          batch.delete(slotRef(id)); cambios++;
+        }
+        if (cambios >= 450) break; // límite de Firestore: 500 operaciones por lote
+      }
+      if (cambios) await batch.commit();
+
+      // El índice público de slugs ya no guarda el email del doctor
+      const slugSnap = await getDoc(doc(db, 'slugs', doctorData.slug));
+      if (slugSnap.exists() && 'email' in slugSnap.data()) await setDoc(doc(db, 'slugs', doctorData.slug), { uid });
+    } catch (e) {
+      console.warn('No se pudo sincronizar el tablero de horarios:', e);
+    }
+  }
+
   // ── LOAD DATA ─────────────────────────────────────────────────────
   function loadData() {
     // Citas
     onSnapshot(query(collection(db, 'doctores', uid, 'citas'), orderBy('fechaHora', 'asc')), snap => {
       allCitas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      sincronizarTablero(allCitas);
       updateDashboard();
       renderCitasTable(allCitas);
       buildCalendar();
@@ -963,7 +1003,15 @@
 
   document.getElementById('btnConfirmCancel').addEventListener('click', async () => {
     if (!cancelCitaId) return;
-    await updateDoc(doc(db, 'doctores', uid, 'citas', cancelCitaId), { estado: 'cancelada' });
+    const cita = allCitas.find(c => c.id === cancelCitaId);
+    const batch = writeBatch(db);
+    batch.update(doc(db, 'doctores', uid, 'citas', cancelCitaId), { estado: 'cancelada' });
+    // Liberar el horario en el tablero público, solo si pertenece a esta cita
+    if (cita?.fechaHora) {
+      const slot = await getDoc(slotRef(cita.fechaHora)).catch(() => null);
+      if (slot?.exists() && slot.data().citaId === cancelCitaId) batch.delete(slotRef(cita.fechaHora));
+    }
+    await batch.commit();
     document.getElementById('confirmCancel').classList.remove('show');
     showToast('Cita cancelada — el paciente será notificado', 'error');
     cancelCitaId = null;
@@ -1081,7 +1129,14 @@
     const pac   = document.getElementById('ncPaciente').value.trim();
     const fecha = document.getElementById('ncFecha').value;
     if (!pac||!fecha) { showToast('Completa nombre y fecha', 'error'); return; }
-    await addDoc(collection(db, 'doctores', uid, 'citas'), {
+    const citaRef = doc(collection(db, 'doctores', uid, 'citas'));
+    const batch = writeBatch(db);
+    // Marcar el horario como ocupado (si no lo está ya) para que no lo reserven en la página pública
+    const slot = await getDoc(slotRef(fecha)).catch(() => null);
+    if (slot && !slot.exists()) {
+      batch.set(slotRef(fecha), { fecha: fecha.slice(0, 10), hora: fecha.slice(11, 16), citaId: citaRef.id });
+    }
+    batch.set(citaRef, {
       pacienteNombre: pac,
       pacienteTel:    document.getElementById('ncTelefono').value.trim(),
       tipo:           document.getElementById('ncTipo').value,
@@ -1091,6 +1146,7 @@
       creadoEn:       new Date().toISOString(),
       origen:         'manual',
     });
+    await batch.commit();
     closeModal('modalCita');
     showToast('Cita creada ✅', 'success');
   });
