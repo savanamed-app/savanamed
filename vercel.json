@@ -4,5 +4,11 @@
       "source": "/:slug((?!index|registro|login|panel|agendar|admin|api|lib|404).*)",
       "destination": "/agendar.html?slug=:slug"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/recordatorios",
+      "schedule": "0 22 * * *"
+    }
   ]
 }
