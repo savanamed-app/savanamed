@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- El enlace es privado: que Google nunca lo indexe ni se filtre a otros sitios -->
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Mi cita — Savanamed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #1a6b4a; --green2: #22855c; --lime: #c8f0d8;
+      --cream: #f7f4ef; --dark: #0f1f17; --gray: #6b7c74;
+      --white: #ffffff; --red: #dc2626; --radius: 14px;
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--dark); min-height: 100vh; }
+
+    nav { background: var(--white); border-bottom: 1px solid rgba(26,107,74,0.1); padding: 14px 5%; }
+    .nav-brand { font-family: 'Instrument Serif', serif; font-size: 1.2rem; color: var(--green); text-decoration: none; }
+    .nav-brand span { font-style: italic; }
+
+    .page { max-width: 560px; margin: 0 auto; padding: 32px 20px 60px; }
+    .oculto { display: none !important; }
+
+    .cargando { text-align: center; padding: 4rem 0; color: var(--gray); }
+    .spinner { width: 32px; height: 32px; border: 3px solid var(--lime); border-top-color: var(--green); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 1rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .aviso-grande { text-align: center; padding: 3rem 1rem; }
+    .aviso-icono { font-size: 3rem; margin-bottom: 1rem; }
+    .aviso-titulo { font-family: 'Instrument Serif', serif; font-size: 1.8rem; margin-bottom: .5rem; }
+    .aviso-texto { color: var(--gray); line-height: 1.6; margin-bottom: 1.5rem; }
+
+    h1 { font-family: 'Instrument Serif', serif; font-size: 1.8rem; font-weight: 400; margin-bottom: .3rem; }
+    .sub { color: var(--gray); font-size: .92rem; margin-bottom: 1.5rem; }
+
+    .card { background: var(--white); border-radius: 20px; padding: 1.5rem; border: 1px solid rgba(26,107,74,0.08); box-shadow: 0 4px 20px rgba(26,107,74,.06); margin-bottom: 1.2rem; }
+    .doctor { display: flex; align-items: center; gap: .9rem; padding-bottom: 1rem; margin-bottom: .6rem; border-bottom: 1px solid #f0f0f0; }
+    .avatar { width: 52px; height: 52px; background: var(--green); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+    .doc-nombre { font-family: 'Instrument Serif', serif; font-size: 1.3rem; }
+    .doc-esp { color: var(--green); font-size: .85rem; font-weight: 600; }
+    .fila { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem 0; font-size: .9rem; }
+    .fila span:first-child { color: var(--gray); }
+    .fila span:last-child { font-weight: 600; text-align: right; }
+
+    .estado { display: inline-block; padding: 3px 12px; border-radius: 100px; font-size: .78rem; font-weight: 700; text-transform: capitalize; }
+    .estado.pendiente { background: #fef9c3; color: #854d0e; }
+    .estado.confirmada { background: var(--lime); color: var(--green); }
+    .estado.urgente { background: #fee2e2; color: var(--red); }
+    .estado.cancelada { background: #f3f4f6; color: #6b7280; }
+
+    .nota { background: #fef9c3; color: #854d0e; border-radius: 10px; padding: 12px 14px; font-size: .86rem; line-height: 1.5; margin-bottom: 1.2rem; }
+    .alerta { background: #fef2f2; border: 1px solid #fecaca; color: var(--red); border-radius: 10px; padding: 12px 14px; font-size: .88rem; margin-bottom: 1rem; }
+    .exito { background: #ecfdf5; border: 1px solid var(--lime); color: var(--green); border-radius: 10px; padding: 12px 14px; font-size: .9rem; font-weight: 600; margin-bottom: 1rem; }
+
+    .btn { width: 100%; padding: 14px; border-radius: 100px; font-size: .98rem; font-weight: 600; cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all .2s; display: block; text-align: center; text-decoration: none; }
+    .btn + .btn { margin-top: .7rem; }
+    .btn-verde { background: var(--green); color: var(--white); border: none; }
+    .btn-verde:hover { background: var(--green2); }
+    .btn-borde { background: var(--white); color: var(--green); border: 1.5px solid var(--green); }
+    .btn-rojo { background: var(--white); color: var(--red); border: 1.5px solid #fecaca; }
+    .btn-rojo.fuerte { background: var(--red); color: var(--white); border-color: var(--red); }
+    .btn:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-volver { background: none; border: none; color: var(--gray); font-size: .88rem; cursor: pointer; margin-bottom: 1rem; font-family: 'DM Sans', sans-serif; }
+
+    .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .cal-nav h3 { font-size: 1rem; font-weight: 600; }
+    .cal-btn { background: none; border: 1.5px solid #e5e7eb; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 1rem; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 1rem; }
+    .cal-dia-nombre { text-align: center; font-size: .65rem; font-weight: 700; color: var(--gray); text-transform: uppercase; padding: 6px 0; }
+    .cal-dia { aspect-ratio: 1; border: none; background: none; border-radius: 8px; font-size: .85rem; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+    .cal-dia:hover:not(:disabled) { background: var(--lime); }
+    .cal-dia.sel { background: var(--green); color: var(--white); font-weight: 700; }
+    .cal-dia:disabled { color: #d1d5db; cursor: not-allowed; }
+    .slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; margin-bottom: 1.2rem; }
+    .slot { padding: 9px 4px; border-radius: 8px; border: 1.5px solid #e5e7eb; font-size: .82rem; cursor: pointer; background: var(--white); font-family: 'DM Sans', sans-serif; }
+    .slot.sel { background: var(--green); color: var(--white); border-color: var(--green); }
+    .slot:disabled { background: #f5f5f5; color: #d1d5db; text-decoration: line-through; cursor: not-allowed; border-color: #f5f5f5; }
+    .vacio { grid-column: 1 / -1; text-align: center; padding: 1.2rem; color: var(--gray); font-size: .88rem; border: 1px dashed #e5e7eb; border-radius: 10px; }
+    .etiqueta { font-size: .75rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: .6rem; }
+
+    @media (max-width: 480px) { .slots { grid-template-columns: repeat(3, 1fr); } .page { padding: 20px 16px 40px; } }
+  </style>
+</head>
+<body>
+<nav><a href="/" class="nav-brand">Sava<span>med</span></a></nav>
+
+<main class="page">
+  <div id="vCargando" class="cargando"><div class="spinner"></div>Cargando tu cita…</div>
+
+  <div id="vError" class="aviso-grande oculto">
+    <div class="aviso-icono">🔗</div>
+    <div class="aviso-titulo">Enlace no válido</div>
+    <p class="aviso-texto" id="errorTexto"></p>
+  </div>
+
+  <!-- Vista principal: la cita -->
+  <section id="vCita" class="oculto">
+    <h1 id="saludo"></h1>
+    <p class="sub">Estos son los datos de tu cita.</p>
+    <div id="mensaje"></div>
+    <div class="card">
+      <div class="doctor">
+        <div class="avatar" id="docEmoji"></div>
+        <div><div class="doc-nombre" id="docNombre"></div><div class="doc-esp" id="docEsp"></div></div>
+      </div>
+      <div class="fila"><span>Fecha</span><span id="cFecha"></span></div>
+      <div class="fila"><span>Hora</span><span id="cHora"></span></div>
+      <div class="fila"><span>Tipo</span><span id="cTipo"></span></div>
+      <div class="fila oculto" id="filaDir"><span>Dirección</span><span id="cDir"></span></div>
+      <div class="fila"><span>Estado</span><span><span class="estado" id="cEstado"></span></span></div>
+    </div>
+    <div id="nota" class="nota oculto"></div>
+    <div id="acciones">
+      <button class="btn btn-borde" id="btnCambiar">🔄 Cambiar fecha u hora</button>
+      <button class="btn btn-rojo" id="btnCancelar">Cancelar mi cita</button>
+    </div>
+    <a class="btn btn-verde oculto" id="btnNueva">Agendar una nueva cita</a>
+  </section>
+
+  <!-- Confirmar cancelación -->
+  <section id="vCancelar" class="oculto">
+    <button class="btn-volver" data-volver>← Volver</button>
+    <h1>¿Cancelar tu cita?</h1>
+    <p class="sub" id="cancelarTexto"></p>
+    <div id="errCancelar"></div>
+    <button class="btn btn-rojo fuerte" id="btnSiCancelar">Sí, cancelar mi cita</button>
+    <button class="btn btn-borde" data-volver>No, mantenerla</button>
+  </section>
+
+  <!-- Elegir nuevo horario -->
+  <section id="vCambiar" class="oculto">
+    <button class="btn-volver" data-volver>← Volver</button>
+    <h1>Elige tu nuevo horario</h1>
+    <p class="sub">Tu horario actual se libera cuando confirmes el cambio.</p>
+    <div class="card">
+      <div class="cal-nav">
+        <button class="cal-btn" id="calAnt" aria-label="Mes anterior">‹</button>
+        <h3 id="calMes"></h3>
+        <button class="cal-btn" id="calSig" aria-label="Mes siguiente">›</button>
+      </div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div id="slotsZona" class="oculto">
+        <div class="etiqueta" id="slotsTitulo"></div>
+        <div class="slots" id="slots"></div>
+      </div>
+    </div>
+    <div id="errCambiar"></div>
+    <button class="btn btn-verde" id="btnConfirmarCambio" disabled>Confirmar nuevo horario</button>
+  </section>
+</main>
+
+<script type="module">
+  import { generarSlots, diaDisponible, ahoraVenezuela, aMinutos } from '/lib/agenda.js';
+
+  const TIPOS = { consulta: 'Consulta general', revision: 'Revisión / control', procedimiento: 'Procedimiento', emergencia: 'Emergencia' };
+  const ANTICIPACION_MIN = 120; // igual que el servidor (lib/gestionPaciente.js)
+  // El token se guarda solo en esta pestaña (por si el paciente recarga) y se
+  // quita de la barra de direcciones para que no quede a la vista ni en el historial.
+  const leer = () => { try { return sessionStorage.getItem('miCitaToken') || ''; } catch { return ''; } };
+  const token = new URLSearchParams(location.search).get('t') || leer();
+  try { if (token) sessionStorage.setItem('miCitaToken', token); } catch { /* modo privado */ }
+  history.replaceState(null, '', location.pathname);
+
+  let datos = null;
+  let mesVisible = null;
+  let elegida = { fecha: null, hora: null };
+  let ocupado = false;
+
+  const $ = (id) => document.getElementById(id);
+  const vistas = ['vCargando', 'vError', 'vCita', 'vCancelar', 'vCambiar'];
+  const mostrar = (id) => vistas.forEach((v) => $(v).classList.toggle('oculto', v !== id));
+  const caja = (clase, texto) => { const d = document.createElement('div'); d.className = clase; d.textContent = texto; return d; };
+  const ponerMensaje = (id, clase, texto) => { $(id).replaceChildren(texto ? caja(clase, texto) : ''); };
+
+  function formatear(fechaHora) {
+    const [f, h] = fechaHora.split('T');
+    const [a, m, d] = f.split('-').map(Number);
+    const [hh, mm] = h.split(':').map(Number);
+    const dt = new Date(Date.UTC(a, m - 1, d, hh, mm));
+    return {
+      dia: new Intl.DateTimeFormat('es-VE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' }).format(dt),
+      hora: new Intl.DateTimeFormat('es-VE', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'UTC' }).format(dt),
+    };
+  }
+
+  async function api(metodo, extra = {}) {
+    const opciones = metodo === 'GET'
+      ? { method: 'GET' }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, ...extra }) };
+    const url = metodo === 'GET'
+      ? `/api/mi-cita?${new URLSearchParams({ t: token, ...extra })}`
+      : '/api/mi-cita';
+    const r = await fetch(url, opciones);
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(j.error || 'Algo falló. Intenta de nuevo.'); e.status = r.status; throw e; }
+    return j;
+  }
+
+  // ── Cargar y pintar la cita ─────────────────────────────────────
+  async function cargar(mensajeExito = '') {
+    mostrar('vCargando');
+    try {
+      datos = await api('GET');
+    } catch (e) {
+      $('errorTexto').textContent = e.status === 404 ? e.message : 'No pudimos cargar tu cita. Revisa tu conexión e intenta de nuevo.';
+      mostrar('vError');
+      return;
+    }
+    pintar(mensajeExito);
+  }
+
+  function pintar(mensajeExito) {
+    const { cita, doctor, noModificable } = datos;
+    const { dia, hora } = formatear(cita.fechaHora);
+    // textContent (no innerHTML): ningún dato se interpreta como código
+    $('saludo').textContent = cita.nombre ? `Hola, ${cita.nombre}` : 'Tu cita';
+    $('docEmoji').textContent = doctor.emoji || '👨‍⚕️';
+    $('docNombre').textContent = doctor.nombre;
+    $('docEsp').textContent = doctor.especialidad;
+    $('cFecha').textContent = dia;
+    $('cHora').textContent = hora;
+    $('cTipo').textContent = TIPOS[cita.tipo] || cita.tipo || '—';
+    const dir = [doctor.direccion, doctor.ciudad].filter(Boolean).join(', ');
+    $('cDir').textContent = dir;
+    $('filaDir').classList.toggle('oculto', !dir);
+    $('cEstado').textContent = cita.estado;
+    $('cEstado').className = `estado ${cita.estado}`;
+
+    ponerMensaje('mensaje', 'exito', mensajeExito);
+    const cancelada = cita.estado === 'cancelada';
+    $('acciones').classList.toggle('oculto', !!noModificable);
+    $('nota').classList.toggle('oculto', !noModificable || (cancelada && !!mensajeExito));
+    $('nota').textContent = noModificable || '';
+    $('btnNueva').classList.toggle('oculto', !(cancelada && doctor.slug));
+    if (doctor.slug) $('btnNueva').href = `/${encodeURIComponent(doctor.slug)}`;
+    mostrar('vCita');
+  }
+
+  // ── Cancelar ────────────────────────────────────────────────────
+  $('btnCancelar').addEventListener('click', () => {
+    const { dia, hora } = formatear(datos.cita.fechaHora);
+    $('cancelarTexto').textContent = `Tu cita del ${dia} a las ${hora} quedará cancelada y el horario se liberará para otro paciente. Le avisaremos al consultorio.`;
+    ponerMensaje('errCancelar', '', '');
+    mostrar('vCancelar');
+  });
+
+  $('btnSiCancelar').addEventListener('click', async () => {
+    if (ocupado) return;
+    ocupado = true;
+    $('btnSiCancelar').disabled = true;
+    try {
+      await api('POST', { accion: 'cancelar' });
+      await cargar('Tu cita fue cancelada. Ya le avisamos al consultorio.');
+    } catch (e) {
+      ponerMensaje('errCancelar', 'alerta', e.message);
+    } finally {
+      ocupado = false;
+      $('btnSiCancelar').disabled = false;
+    }
+  });
+
+  // ── Cambiar fecha/hora ──────────────────────────────────────────
+  $('btnCambiar').addEventListener('click', () => {
+    elegida = { fecha: null, hora: null };
+    const hoy = ahoraVenezuela().fecha;
+    mesVisible = { a: Number(hoy.slice(0, 4)), m: Number(hoy.slice(5, 7)) - 1 };
+    $('slotsZona').classList.add('oculto');
+    $('btnConfirmarCambio').disabled = true;
+    ponerMensaje('errCambiar', '', '');
+    dibujarCalendario();
+    mostrar('vCambiar');
+  });
+
+  function dibujarCalendario() {
+    const { a, m } = mesVisible;
+    const hoy = ahoraVenezuela().fecha;
+    const mes = new Date(Date.UTC(a, m, 15)).toLocaleDateString('es-VE', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+    $('calMes').textContent = mes.charAt(0).toUpperCase() + mes.slice(1);
+    const grid = $('calGrid');
+    grid.replaceChildren(...['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((d) => caja('cal-dia-nombre', d)));
+    const primero = new Date(Date.UTC(a, m, 1)).getUTCDay();
+    const dias = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+    for (let i = 0; i < primero; i++) grid.append(document.createElement('div'));
+    for (let d = 1; d <= dias; d++) {
+      const fecha = `${a}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const b = document.createElement('button');
+      b.className = 'cal-dia' + (fecha === elegida.fecha ? ' sel' : '');
+      b.textContent = d;
+      b.disabled = !diaDisponible(datos.horario, fecha);
+      b.addEventListener('click', () => { elegida = { fecha, hora: null }; $('btnConfirmarCambio').disabled = true; dibujarCalendario(); cargarSlots(fecha); });
+      grid.append(b);
+    }
+    const hoyMes = { a: Number(hoy.slice(0, 4)), m: Number(hoy.slice(5, 7)) - 1 };
+    $('calAnt').disabled = a === hoyMes.a && m === hoyMes.m;
+  }
+
+  $('calAnt').addEventListener('click', () => { const { a, m } = mesVisible; mesVisible = m === 0 ? { a: a - 1, m: 11 } : { a, m: m - 1 }; dibujarCalendario(); });
+  $('calSig').addEventListener('click', () => { const { a, m } = mesVisible; mesVisible = m === 11 ? { a: a + 1, m: 0 } : { a, m: m + 1 }; dibujarCalendario(); });
+
+  async function cargarSlots(fecha) {
+    $('slotsZona').classList.remove('oculto');
+    $('slotsTitulo').textContent = new Date(fecha + 'T12:00:00Z').toLocaleDateString('es-VE', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    const cont = $('slots');
+    cont.replaceChildren(caja('vacio', 'Cargando horarios…'));
+
+    let ocupados = [];
+    try { ({ ocupados } = await api('GET', { fecha })); } catch { /* el servidor revalida al confirmar */ }
+    if (elegida.fecha !== fecha) return; // el paciente ya eligió otro día
+
+    // Solo horarios con al menos 2 horas de anticipación
+    const ahora = ahoraVenezuela();
+    const slots = generarSlots(datos.horario).filter((h) => fecha !== ahora.fecha || aMinutos(h) - ahora.minutos >= ANTICIPACION_MIN);
+    const libres = slots.filter((h) => !ocupados.includes(h));
+    if (!libres.length) { cont.replaceChildren(caja('vacio', 'No quedan horarios este día. Prueba con otro.')); return; }
+
+    cont.replaceChildren(...slots.map((h) => {
+      const b = document.createElement('button');
+      b.className = 'slot';
+      b.textContent = h;
+      b.disabled = ocupados.includes(h);
+      b.addEventListener('click', () => {
+        elegida.hora = h;
+        cont.querySelectorAll('.slot').forEach((x) => x.classList.toggle('sel', x === b));
+        $('btnConfirmarCambio').disabled = false;
+      });
+      return b;
+    }));
+  }
+
+  $('btnConfirmarCambio').addEventListener('click', async () => {
+    if (ocupado || !elegida.fecha || !elegida.hora) return;
+    ocupado = true;
+    $('btnConfirmarCambio').disabled = true;
+    try {
+      await api('POST', { accion: 'reprogramar', fecha: elegida.fecha, hora: elegida.hora });
+      await cargar('¡Listo! Tu cita cambió de horario. El consultorio la confirmará.');
+    } catch (e) {
+      ponerMensaje('errCambiar', 'alerta', e.message);
+      if (e.status === 409) cargarSlots(elegida.fecha); // alguien lo tomó: recargar horarios
+      $('btnConfirmarCambio').disabled = false;
+    } finally {
+      ocupado = false;
+    }
+  });
+
+  document.querySelectorAll('[data-volver]').forEach((b) => b.addEventListener('click', () => mostrar('vCita')));
+
+  if (!token) {
+    $('errorTexto').textContent = 'Abre esta página desde el botón "Cancelar o cambiar mi cita" de tu email.';
+    mostrar('vError');
+  } else {
+    cargar();
+  }
+</script>
+</body>
+</html>
