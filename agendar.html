@@ -291,7 +291,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, doc, getDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-  import { leerHorario, diaDisponible, generarSlots, ahoraVenezuela, aMinutos, normalizarTelefono, formatearTelefono } from "/lib/agenda.js";
+  import { leerHorario, diaDisponible, slotsDelDia, ahoraVenezuela, aMinutos, normalizarTelefono, formatearTelefono } from "/lib/agenda.js";
 
   const app = initializeApp({
     apiKey: "AIzaSyDN0AcvUM056iG2VMJV_Tx74Tx1ZNAbMh0",
@@ -428,7 +428,7 @@
 
     // Horarios según la agenda real del doctor; si es hoy, sin los que ya pasaron
     const ahora = ahoraVenezuela();
-    const slots = generarSlots(horario)
+    const slots = slotsDelDia(horario, fecha)
       .filter(h => fecha !== ahora.fecha || aMinutos(h) > ahora.minutos);
 
     const fechaObj = new Date(fecha + 'T12:00');

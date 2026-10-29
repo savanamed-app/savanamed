@@ -153,7 +153,7 @@
 </main>
 
 <script type="module">
-  import { generarSlots, diaDisponible, ahoraVenezuela, aMinutos } from '/lib/agenda.js';
+  import { slotsDelDia, diaDisponible, ahoraVenezuela, aMinutos } from '/lib/agenda.js';
 
   const TIPOS = { consulta: 'Consulta general', revision: 'Revisión / control', procedimiento: 'Procedimiento', emergencia: 'Emergencia' };
   const ANTICIPACION_MIN = 120; // igual que el servidor (lib/gestionPaciente.js)
@@ -312,7 +312,7 @@
 
     // Solo horarios con al menos 2 horas de anticipación
     const ahora = ahoraVenezuela();
-    const slots = generarSlots(datos.horario).filter((h) => fecha !== ahora.fecha || aMinutos(h) - ahora.minutos >= ANTICIPACION_MIN);
+    const slots = slotsDelDia(datos.horario, fecha).filter((h) => fecha !== ahora.fecha || aMinutos(h) - ahora.minutos >= ANTICIPACION_MIN);
     const libres = slots.filter((h) => !ocupados.includes(h));
     if (!libres.length) { cont.replaceChildren(caja('vacio', 'No quedan horarios este día. Prueba con otro.')); return; }
 

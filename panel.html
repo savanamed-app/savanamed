@@ -205,6 +205,16 @@
     .confirm-title { font-family: 'Instrument Serif', serif; font-size: 1.3rem; margin-bottom: .5rem; }
     .confirm-sub { color: var(--gray); font-size: .88rem; margin-bottom: 1.5rem; line-height: 1.6; }
     .confirm-btns { display: flex; gap: .8rem; }
+    /* Bloqueos de agenda */
+    .bloq-item { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem 0; border-bottom: 1px solid #f3f4f6; font-size: .86rem; }
+    .bloq-item:last-child { border-bottom: none; }
+    .bloq-fechas { font-weight: 600; }
+    .bloq-horas { color: var(--gray); font-size: .78rem; margin-top: .1rem; }
+    .bloq-check { display: flex; align-items: center; gap: .5rem; font-size: .85rem; margin-bottom: 1rem; cursor: pointer; }
+    .bloq-check input { width: auto; }
+    .bloq-conflictos { text-align: left; background: #fef9c3; border-radius: 10px; padding: .8rem 1rem; margin-bottom: 1rem; font-size: .82rem; max-height: 180px; overflow-y: auto; }
+    .bloq-conflictos div { padding: .2rem 0; }
+    .confirm-btns.vertical { flex-direction: column; }
 
     @media (max-width: 900px) {
       .sidebar { display: none; }
@@ -422,6 +432,26 @@
         </div>
         <button class="btn-save-perfil" id="btnSaveHorarios">Guardar horarios</button>
       </div>
+
+      <!-- BLOQUEOS: días u horas en que el doctor NO atiende -->
+      <div class="card" style="max-width:700px;margin-top:1.2rem;">
+        <div class="card-header"><div class="card-title">🚫 Bloquear días u horas</div></div>
+        <p style="font-size:.85rem;color:var(--gray);margin-bottom:1.2rem;">Vacaciones, congresos, un día libre o unas horas puntuales. Esos horarios desaparecen de tu página de citas.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Desde</label><input type="date" id="bloqDesde" /></div>
+          <div class="form-group"><label>Hasta</label><input type="date" id="bloqHasta" /></div>
+        </div>
+        <label class="bloq-check"><input type="checkbox" id="bloqSoloHoras" /> Solo unas horas (no el día completo)</label>
+        <div class="form-row" id="bloqHorasRow" style="display:none;">
+          <div class="form-group"><label>Desde la hora</label><input type="time" id="bloqHoraIni" value="12:00" /></div>
+          <div class="form-group"><label>Hasta la hora</label><input type="time" id="bloqHoraFin" value="14:00" /></div>
+        </div>
+        <button class="btn-save-perfil" id="btnAddBloqueo" style="margin-top:0;">Agregar bloqueo</button>
+        <div style="margin-top:1.4rem;">
+          <div class="sc-label">Próximos bloqueos</div>
+          <div id="bloqLista"><div class="empty"><p>No tienes bloqueos programados.</p></div></div>
+        </div>
+      </div>
     </div>
 
     <!-- TIPOS DE CITA -->
@@ -593,6 +623,20 @@
   </div>
 </div>
 
+<div class="confirm-overlay" id="confirmBloqueo">
+  <div class="confirm-box" style="max-width:440px;">
+    <div class="confirm-icon">⚠️</div>
+    <div class="confirm-title" id="bloqConfTitulo"></div>
+    <div class="confirm-sub">Bloquear no cancela citas que ya existen. ¿Qué quieres hacer con ellas?</div>
+    <div class="bloq-conflictos" id="bloqConfLista"></div>
+    <div class="confirm-btns vertical">
+      <button class="btn-danger-modal" id="btnBloqCancelar">Bloquear y cancelar estas citas (avisamos a los pacientes)</button>
+      <button class="btn-save-perfil" style="margin-top:0;" id="btnBloqSolo">Solo bloquear (las atenderé igual)</button>
+      <button class="btn-cancel-modal" style="padding:11px;border-radius:100px;border:1.5px solid #e5e7eb;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;" id="btnBloqVolver">Volver</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -600,6 +644,7 @@
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, where, getDocs, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+  import { leerBloqueos, ahoraVenezuela, aMinutos, MAX_BLOQUEOS } from "/lib/agenda.js";
 
   const app = initializeApp({
     apiKey: "AIzaSyDN0AcvUM056iG2VMJV_Tx74Tx1ZNAbMh0",
@@ -695,6 +740,11 @@
       navigator.clipboard.writeText(`https://savanamed.net/${doctorData.slug}`);
       showToast('Link copiado ✅', 'success');
     });
+
+    // Bloqueos de agenda
+    cargarBloqueos();
+    document.getElementById('bloqDesde').min = hoyVE();
+    document.getElementById('bloqHasta').min = hoyVE();
 
     // Tipos de cita
     loadTipos();
@@ -803,6 +853,147 @@
       duracionCita:  parseInt(document.getElementById('duracionCita').value),
     }).catch(()=>{});
     showToast('Horarios guardados ✅', 'success');
+  });
+
+  // ── BLOQUEOS DE AGENDA ────────────────────────────────────────────
+  // Se guardan en el perfil público (solo fechas y horas, sin motivo) para que
+  // la página de citas y el servidor los respeten sin consultas extra.
+  // Las reglas (qué es un bloqueo válido, qué horarios quita) viven en
+  // /lib/agenda.js y son las MISMAS que usa el servidor al validar una cita.
+  let bloqueos = [];
+  let bloqueoPendiente = null;
+  let conflictosPendientes = [];
+
+  const hoyVE = () => ahoraVenezuela().fecha;
+  const fmtFechaCorta = (f) => new Date(f + 'T12:00:00Z').toLocaleDateString('es-VE', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+  async function cargarBloqueos() {
+    if (!doctorData.slug) return;
+    const snap = await getDoc(doc(db, 'perfiles', doctorData.slug)).catch(() => null);
+    bloqueos = leerBloqueos(snap?.exists() ? snap.data().bloqueos : []);
+    pintarBloqueos();
+  }
+
+  function pintarBloqueos() {
+    const lista = document.getElementById('bloqLista');
+    const futuros = bloqueos.filter((b) => b.hasta >= hoyVE()).sort((a, b) => a.desde.localeCompare(b.desde));
+    if (!futuros.length) { lista.innerHTML = '<div class="empty"><p>No tienes bloqueos programados.</p></div>'; return; }
+    lista.innerHTML = futuros.map((b) => `
+      <div class="bloq-item">
+        <div>
+          <div class="bloq-fechas">${esc(b.desde === b.hasta ? fmtFechaCorta(b.desde) : `${fmtFechaCorta(b.desde)} → ${fmtFechaCorta(b.hasta)}`)}</div>
+          <div class="bloq-horas">${b.horaInicio ? `De ${esc(b.horaInicio)} a ${esc(b.horaFin)}` : 'Todo el día'}</div>
+        </div>
+        <button class="btn-tbl red" data-quitar="${esc(b.id)}">Quitar</button>
+      </div>`).join('');
+    lista.querySelectorAll('[data-quitar]').forEach((btn) => btn.addEventListener('click', () => quitarBloqueo(btn.dataset.quitar)));
+  }
+
+  // Guarda la lista completa, quitando de paso los bloqueos que ya pasaron
+  async function guardarBloqueos(nuevaLista) {
+    const vigentes = leerBloqueos(nuevaLista).filter((b) => b.hasta >= hoyVE());
+    await updateDoc(doc(db, 'perfiles', doctorData.slug), { bloqueos: vigentes });
+    bloqueos = vigentes;
+    pintarBloqueos();
+  }
+
+  async function quitarBloqueo(id) {
+    try {
+      await guardarBloqueos(bloqueos.filter((b) => b.id !== id));
+      showToast('Bloqueo quitado. Esos horarios vuelven a estar disponibles ✅', 'success');
+    } catch (e) {
+      showToast('No pudimos quitar el bloqueo. Intenta de nuevo.', 'error');
+    }
+  }
+
+  // Citas activas que caen dentro del bloqueo
+  function citasEnBloqueo(b) {
+    const dur = parseInt(doctorData.duracionCita, 10) || 30;
+    return allCitas.filter((c) => {
+      if (!c.fechaHora || c.estado === 'cancelada') return false;
+      const fecha = c.fechaHora.slice(0, 10);
+      if (fecha < hoyVE() || fecha < b.desde || fecha > b.hasta) return false;
+      if (!b.horaInicio) return true;
+      const ini = aMinutos(c.fechaHora.slice(11, 16));
+      return ini < aMinutos(b.horaFin) && ini + dur > aMinutos(b.horaInicio);
+    }).sort((a, z) => a.fechaHora.localeCompare(z.fechaHora));
+  }
+
+  document.getElementById('bloqSoloHoras').addEventListener('change', (e) => {
+    document.getElementById('bloqHorasRow').style.display = e.target.checked ? '' : 'none';
+  });
+  document.getElementById('bloqDesde').addEventListener('change', (e) => {
+    const hasta = document.getElementById('bloqHasta');
+    if (!hasta.value || hasta.value < e.target.value) hasta.value = e.target.value;
+  });
+
+  document.getElementById('btnAddBloqueo').addEventListener('click', () => {
+    const desde = document.getElementById('bloqDesde').value;
+    const hasta = document.getElementById('bloqHasta').value || desde;
+    const soloHoras = document.getElementById('bloqSoloHoras').checked;
+    const b = { id: `b${Date.now().toString(36)}`, desde, hasta };
+    if (soloHoras) {
+      b.horaInicio = document.getElementById('bloqHoraIni').value;
+      b.horaFin = document.getElementById('bloqHoraFin').value;
+    }
+
+    if (!desde) return showToast('Elige la fecha de inicio', 'error');
+    if (desde < hoyVE()) return showToast('La fecha de inicio ya pasó', 'error');
+    if (!leerBloqueos([b]).length) {
+      return showToast(soloHoras ? 'Revisa las horas: la hora final debe ser después de la inicial' : 'Revisa las fechas (máximo un año)', 'error');
+    }
+    if (bloqueos.length >= MAX_BLOQUEOS) return showToast('Tienes demasiados bloqueos. Quita alguno antiguo.', 'error');
+
+    const conflictos = citasEnBloqueo(b);
+    if (!conflictos.length) return confirmarBloqueo(b, []);
+
+    // Hay citas en ese período: el doctor decide qué hacer con ellas
+    bloqueoPendiente = b;
+    conflictosPendientes = conflictos;
+    document.getElementById('bloqConfTitulo').textContent = `Tienes ${conflictos.length} ${conflictos.length === 1 ? 'cita' : 'citas'} en esas fechas`;
+    document.getElementById('bloqConfLista').innerHTML = conflictos.map((c) =>
+      `<div>📅 ${esc(fmtFechaCorta(c.fechaHora.slice(0, 10)))} · ${esc(c.fechaHora.slice(11, 16))} — <strong>${esc(c.pacienteNombre)}</strong></div>`).join('');
+    document.getElementById('confirmBloqueo').classList.add('show');
+  });
+
+  async function confirmarBloqueo(b, aCancelar) {
+    const botones = ['btnAddBloqueo', 'btnBloqCancelar', 'btnBloqSolo'].map((id) => document.getElementById(id));
+    botones.forEach((x) => { x.disabled = true; });
+    try {
+      // 1. Primero el bloqueo: así nadie más agenda en ese período
+      await guardarBloqueos([...bloqueos, b]);
+
+      // 2. Luego cancelar las citas elegidas, una por una, por el servidor
+      //    (libera el horario, guarda el historial y avisa a cada paciente)
+      let fallidas = 0;
+      for (const c of aCancelar) {
+        try { await cambiarEstado(c.id, 'cancelar'); } catch { fallidas++; }
+      }
+
+      document.getElementById('confirmBloqueo').classList.remove('show');
+      document.getElementById('bloqDesde').value = '';
+      document.getElementById('bloqHasta').value = '';
+      if (!aCancelar.length) showToast('Bloqueo agregado ✅', 'success');
+      else if (!fallidas) showToast(`Bloqueo agregado y ${aCancelar.length} ${aCancelar.length === 1 ? 'cita cancelada' : 'citas canceladas'} ✅`, 'success');
+      else showToast(`Bloqueo agregado, pero ${fallidas} ${fallidas === 1 ? 'cita no se pudo' : 'citas no se pudieron'} cancelar. Revísalas en Citas.`, 'error');
+    } catch (e) {
+      showToast('No pudimos guardar el bloqueo. Intenta de nuevo.', 'error');
+    } finally {
+      botones.forEach((x) => { x.disabled = false; });
+      bloqueoPendiente = null;
+      conflictosPendientes = [];
+    }
+  }
+
+  document.getElementById('btnBloqCancelar').addEventListener('click', () => {
+    if (bloqueoPendiente) confirmarBloqueo(bloqueoPendiente, conflictosPendientes);
+  });
+  document.getElementById('btnBloqSolo').addEventListener('click', () => {
+    if (bloqueoPendiente) confirmarBloqueo(bloqueoPendiente, []);
+  });
+  document.getElementById('btnBloqVolver').addEventListener('click', () => {
+    document.getElementById('confirmBloqueo').classList.remove('show');
+    bloqueoPendiente = null;
   });
 
   // ── TABLERO PÚBLICO DE HORARIOS OCUPADOS ──────────────────────────
